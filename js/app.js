@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.8';
+const VERSI = '1.3.9';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -961,7 +961,7 @@ function bukaHisab() {
     <div class="chat-kirim"><input class="inp" id="chInp" placeholder="Tanya, atau ketik: keluar 150rb konsumsi syuro"><button class="btn utama" id="chKirim">➤</button></div></div>`);
   const isi = $('#chIsi', el);
   const tampil = () => { isi.innerHTML = chatLog.map(m => `<div class="bub ${m.dari}">${m.html ? m.teks : esc(m.teks)}</div>`).join(''); isi.scrollTop = isi.scrollHeight; };
-  if (!chatLog.length) chatLog.push({ dari: 'bot', teks: `Assalamu'alaikum${S.konfig?.bendahara ? ', ' + S.konfig.bendahara : ''}. Saya HISAB, siap bantu cek saldo, rekap, piutang, atau mencatat transaksi cepat.\n\nContoh: "pengeluaran material bulan lalu", "piutang Basir", "masuk 2jt infak Fauzi".${S.meta.syncUrl && S.meta.aiOn !== false ? '\n\nPertanyaan bebas juga boleh, nanti dijawab HISAB AI.' : ''}` });
+  if (!chatLog.length) chatLog.push({ dari: 'bot', teks: `Assalamu'alaikum${S.konfig?.bendahara ? ', ' + S.konfig.bendahara : ''}. Saya HISAB, siap bantu cek saldo, rekap, piutang, atau mencatat transaksi cepat.\n\nContoh: "pengeluaran material bulan lalu", "total piutang", "masuk 2jt infak hamba Allah".${S.meta.syncUrl && S.meta.aiOn !== false ? '\n\nPertanyaan bebas juga boleh, nanti dijawab HISAB AI.' : ''}` });
   tampil();
   const kirim = async q => {
     q = (q || '').trim(); if (!q) return; chatLog.push({ dari: 'saya', teks: q }); $('#chInp', el).value = ''; tampil();
@@ -1061,7 +1061,7 @@ async function jawabHisabInti(qAsli) {
   if (S.meta.syncUrl && S.meta.aiOn !== false && navigator.onLine) {
     try { const r = await api({ action: 'ask', q: qAsli, konteks: konteksAI() }); if (r.jawab) return r.jawab; } catch (e) { return 'Maaf, HISAB AI sedang tidak bisa dihubungi. ' + e.message; }
   }
-  return 'Afwan, HISAB belum paham pertanyaannya. Coba: "saldo pembangunan", "pengeluaran bulan lalu", "piutang Basir", "selisih terakhir", atau "keluar 50rb konsumsi".' + (S.meta.syncUrl ? '' : '\n\n(HISAB AI aktif setelah HP tersambung ke data yayasan.)');
+  return 'Afwan, HISAB belum paham pertanyaannya. Coba: "saldo pembangunan", "pengeluaran bulan lalu", "total piutang", "selisih terakhir", atau "keluar 50rb konsumsi".' + (S.meta.syncUrl ? '' : '\n\n(HISAB AI aktif setelah HP tersambung ke data yayasan.)');
 }
 
 /* =====================================================================
