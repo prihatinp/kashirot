@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.1.0';
+const VERSI = '1.2.0';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 
 /* ---------------- util ---------------- */
@@ -151,6 +151,7 @@ const KAT_DEFAULT = [
   ['Pembayaran Hutang', 'keluar', '💳'], ['Umroh', 'keluar', '🕋'], ['Pengeluaran Lain', 'keluar', '➖'], ['Koreksi Selisih', 'semua', '⚖️']
 ];
 async function pastikanMaster() {
+  if (S.meta.modeSambung && !S.meta.lastPull) return;
   if (!hidup(S.kategori).length) {
     const arr = KAT_DEFAULT.map(([nama, jenis, ikon], i) => ({ id: 'k' + i + '-' + uid(), nama, jenis, ikon, urut: i, sistem: nama === 'Koreksi Selisih', createdAt: Date.now(), updatedAt: Date.now() }));
     S.kategori.push(...arr); await DB.simpanBanyak('kategori', arr);
@@ -366,6 +367,7 @@ async function ambilFotoData(id) {
 }
 function bukaForm(tx, preset = {}) {
   if (!bisaEdit()) return toast('Mode lihat: tidak bisa menambah/ubah data');
+  if (!hidup(S.buku).length || !hidup(S.akun).length) return toast('Belum ada data. Sinkron dulu di Menu › Sinkron & Backup');
   const baru = !tx;
   const d = tx ? JSON.parse(JSON.stringify(tx)) : Object.assign({ id: uid(), jenis: 'keluar', tanggal: hariIni(), nominal: 0, bukuId: S.meta.bukuTerakhir || hidup(S.buku)[0]?.id, akunId: '', kategoriId: '', ket: '', pihak: '', foto: [], ke: {} }, preset);
   if (!d.akunId) d.akunId = (S.meta.akunTerakhir && byId(S.akun, S.meta.akunTerakhir)?.bukuId === d.bukuId ? S.meta.akunTerakhir : hidup(S.akun).find(a => a.bukuId === d.bukuId)?.id) || hidup(S.akun)[0]?.id;
@@ -1434,7 +1436,7 @@ VIEWS.sinkron = el => {
   const m = S.meta;
   el.innerHTML = `<div class="kartu"><h3>☁️ Google Sheet yayasan</h3>
       <small style="color:var(--abu)">Isi dengan alamat Web App dari Google Apps Script (lihat README). Data otomatis tercadang ke Google Sheet & foto ke Google Drive, dan bisa dibuka di HP lain.</small>
-      <label class="l">Alamat Web App</label><input class="inp" id="sUrl" value="${esc(m.syncUrl || '')}" placeholder="https://script.google.com/macros/s/.../exec">
+      <label class="l">Alamat Web App</label><input class="inp" id="sUrl" value="${esc(m.syncUrl || m.syncUrlBawaan || '')}" placeholder="https://script.google.com/macros/s/.../exec">
       <label class="l">Token akses</label><input class="inp" id="sTok" value="${esc(m.syncToken || '')}" placeholder="dari Script Properties: TOKEN atau TOKEN_LIHAT">
       <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px"><input type="checkbox" id="sAuto" ${m.autoSync !== false ? 'checked' : ''}> Sinkron otomatis setiap ada perubahan</label>
       <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13.5px"><input type="checkbox" id="sAi" ${m.aiOn ? 'checked' : ''}> Aktifkan HISAB AI (pertanyaan bebas, butuh GEMINI_API_KEY di Apps Script)</label>
@@ -1446,7 +1448,8 @@ VIEWS.sinkron = el => {
   $('#sSimpan', el).onclick = async () => {
     m.syncUrl = $('#sUrl', el).value.trim(); m.syncToken = $('#sTok', el).value.trim(); m.autoSync = $('#sAuto', el).checked; m.aiOn = $('#sAi', el).checked; await simpanMeta();
     if (!m.syncUrl) return toast('Disimpan (sinkron nonaktif)');
-    try { const r = await api({ action: 'ping' }); if (r.peran === 'lihat') { S.meta.hanyaLihat = true; S.lihat = true; await simpanMeta(); } toast(`✅ Terhubung (${r.peran === 'lihat' ? 'akses lihat' : 'akses bendahara'}) · ${r.sheet || ''}`); render(); } catch (e) { toast('❌ ' + e.message, 4000); }
+    try { const r = await api({ action: 'ping' }); if (r.peran === 'lihat') { S.meta.hanyaLihat = true; S.lihat = true; await simpanMeta(); } toast(`✅ Terhubung (${r.peran === 'lihat' ? 'akses lihat' : 'akses bendahara'}) · ${r.sheet || ''}`); render();
+    if (S.meta.modeSambung && !S.meta.lastPull) { await sinkron(false); for (const k of ['buku', 'akun', 'kategori']) S[k].sort((a, b) => (a.urut || 0) - (b.urut || 0)); pergi('beranda'); } } catch (e) { toast('❌ ' + e.message, 4000); }
   };
   $('#sGo', el).onclick = () => sinkron(false);
   $('#bExp', el).onclick = async () => {
@@ -1499,8 +1502,15 @@ function sambutan() {
       <label class="l">Nama yayasan</label><input class="inp" id="wYys" value="Yayasan Ash-Shirot Al-Mustaqiem">
       <label class="l">Nama Bendahara Umum</label><input class="inp" id="wBend" placeholder="mis. Bp. Fulan">
       <label class="l">Nama Ketua Yayasan (untuk tanda tangan laporan)</label><input class="inp" id="wKetua" placeholder="opsional">
-      <div class="baris-btn" style="flex-direction:column">${adaSeed() ? '<button class="btn utama penuh" data-m="seed">🔐 Buka data yayasan (sudah disiapkan)</button>' : ''}<button class="btn ${adaSeed() ? 'garis' : 'utama'} penuh" data-m="impor">📗 Mulai & import Excel lama</button><button class="btn emas penuh" data-m="baru">✨ Mulai dari kosong</button><button class="btn garis penuh" data-m="demo">👀 Coba dengan data contoh</button></div>`, { wajib: true });
+      <div class="baris-btn" style="flex-direction:column">${adaSeed() ? '<button class="btn utama penuh" data-m="seed">🔐 Buka data yayasan (sudah disiapkan)</button>' : ''}<button class="btn ${adaSeed() ? 'garis' : 'utama'} penuh" data-m="impor">📗 Mulai & import Excel lama</button><button class="btn emas penuh" data-m="baru">✨ Mulai dari kosong</button><button class="btn garis penuh" data-m="demo">👀 Coba dengan data contoh</button></div>
+      <div class="banner info" style="margin-top:12px">📲 <div><b>HP kedua?</b> (HP Ketua/pengurus, atau HP bendahara yang baru) Data yayasan sudah ada di Google Sheet. Cukup sambungkan, tidak perlu isi apa-apa.</div></div>
+      <button class="btn utama penuh" data-m="sambung">📲 Sambung ke data yang sudah ada</button>`, { wajib: true });
     $$('[data-m]', el).forEach(b => b.onclick = async () => {
+      if (b.dataset.m === 'sambung') {
+        // konfig sementara (updatedAt 0) agar konfig dari Sheet yang menang saat pull; master TIDAK dibuat
+        S.konfig = { id: 'umum', yayasan: 'Yayasan Ash-Shirot Al-Mustaqiem', kota: 'Cikarang Selatan', lockedUntil: '', updatedAt: 0, createdAt: 0 };
+        await DB.simpan('konfig', S.konfig); S.meta.modeSambung = true; await simpanMeta(); tutupLembar(); return res('sambung');
+      }
       await simpan('konfig', { id: 'umum', yayasan: $('#wYys', el).value.trim() || 'Yayasan Ash-Shirot Al-Mustaqiem', alamat: 'Cikarang Selatan, Kabupaten Bekasi, Jawa Barat', kota: 'Cikarang Selatan', bendahara: $('#wBend', el).value.trim(), ketua: $('#wKetua', el).value.trim(), ambangBesar: 5000000, lockedUntil: '' }, 'Mulai aplikasi');
       await pastikanMaster(); tutupLembar();
       if (b.dataset.m === 'demo') await isiDemo();
@@ -1535,6 +1545,7 @@ async function mulai() {
   await DB.buka(); await muat();
   if (S.konfig) await pastikanMaster();
   S.lihat = !!S.meta.hanyaLihat;
+  if (!S.meta.syncUrl && window.KASHIROT_API_URL) { S.meta.syncUrlBawaan = window.KASHIROT_API_URL; }
   $('#btnKembali').onclick = kembali;
   $('#btnSync').onclick = () => S.meta.syncUrl ? sinkron(false) : pergi('sinkron');
   $('#fabHisab').onclick = bukaHisab;
@@ -1549,7 +1560,7 @@ async function mulai() {
   });
   window.addEventListener('online', () => jadwalSinkron());
   render();
-  if (!S.konfig) { const m = await sambutan(); pergi(m === 'impor' ? 'impor' : 'beranda'); if (m === 'seed') await muatSeedDialog(); }
+  if (!S.konfig) { const m = await sambutan(); pergi(m === 'impor' ? 'impor' : m === 'sambung' ? 'sinkron' : 'beranda'); if (m === 'sambung') toast(S.meta.syncUrlBawaan ? 'Alamat backend sudah terisi. Cukup isi token, lalu Simpan & tes' : 'Isi alamat Web App + token, lalu Simpan & tes', 4500); if (m === 'seed') await muatSeedDialog(); }
   else if (S.meta.pinHash) await tampilKunci();
   if (S.meta.syncUrl) setTimeout(() => sinkron(true), 1500);
   if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.KASHIROT_STANDALONE) navigator.serviceWorker.register('sw.js').catch(() => { });

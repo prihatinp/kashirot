@@ -21,15 +21,20 @@ backend/Code.gs         Google Apps Script untuk sinkron (opsional)
 
 ---
 
-## A. Pasang aplikasi (GitHub Pages), sekitar 10 menit
-1. Login GitHub (akun `prihatinp`), lalu buat repo baru, mis. **`kashirot`** (Public).
-2. **Add file › Upload files**, lalu seret **isi** folder ini (bukan foldernya) dan Commit.
-3. **Settings › Pages**: Source = *Deploy from a branch*, Branch = `main` / `(root)`, lalu Save.
-4. Tunggu 1–2 menit. Alamatnya: `https://prihatinp.github.io/kashirot/`
-5. (Opsional) Buat short link, mis. `s.id/KasAshShirot`.
-6. Di HP bendahara: buka alamat itu di **Chrome**, lalu ⋮ › **Tambahkan ke layar utama / Instal aplikasi**.
+## A. Pasang aplikasi di HP lewat Cloudflare Pages (sama seperti Ibbas Mart & AC Sarpras)
+1. Buka dash.cloudflare.com (akun yang sama dengan Ibbas Mart/AC Sarpras), lalu **Compute › Workers & Pages › Create**.
+2. Pilih tab **Pages** (atau *Continue to Pages*), lalu **Import an existing Git repository**.
+3. Pilih repo **prihatinp/kashirot**. Kalau belum muncul: **Configure GitHub**, centang `kashirot`, lalu Save.
+4. Isi pengaturannya:
+   - Project name: `kashirot` → alamat **https://kashirot.pages.dev**
+   - Production branch: `main` · Framework preset: **None**
+   - Build command: `bash cloudflare-build.sh` · Build output directory: `dist`
+   - Environment variables: `KASHIROT_API_URL` = URL `/exec` Apps Script
+5. **Save and Deploy**. Setiap push ke `main` otomatis tayang ulang.
+6. Di HP, buka alamat itu di Chrome, lalu ⋮ › **Instal aplikasi**.
 
-> Update berikutnya cukup upload ulang file yang berubah ke GitHub. Aplikasi di HP otomatis memakai versi baru saat online, dan data di HP tidak hilang.
+> Karena alamat backend sudah tertanam lewat `KASHIROT_API_URL`, HP cukup mengisi **token** di Menu › Sinkron.
+> GitHub Pages (`prihatinp.github.io/kashirot`) tidak dipakai. Matikan di Settings › Pages agar tidak ada dua alamat (data HP terikat pada alamat).
 
 ## B. Data yayasan SUDAH TERTANAM (v1.1)
 Data Excel `Laporan_Keuangan_Juni_2026` sudah dibedah dan ditanam di `js/data-awal.js`, **terenkripsi AES-256**. Isinya 149 transaksi, 18 piutang/hutang (3 tanggal sudah dikoreksi), saldo aktual Resume untuk Cek Saldo, dan **10 temuan**. Karena GitHub Pages bersifat publik, tanpa kode data isinya tidak bisa dibaca siapa pun.
@@ -83,4 +88,4 @@ Kalau dana Kas dipakai untuk Pembangunan, catat sebagai **Pindah Dana** (Kas Umu
 ## Catatan teknis
 - Data utama tersimpan di **IndexedDB** HP. Jangan "Hapus data situs" di Chrome sebelum sinkron atau backup.
 - Sinkron: push perubahan (berdasarkan `updatedAt`) dan pull berdasarkan `serverTime` dari Apps Script, sehingga aman dari perbedaan jam HP.
-- Versi: 1.1.0 (22 Nov 2026) — data tertanam + temuan
+- Versi: 1.2.0 (22 Nov 2026): Cloudflare Pages, tombol "Sambung ke data yang sudah ada" untuk HP kedua

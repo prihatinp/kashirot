@@ -1,6 +1,6 @@
 /* KASHIROT service worker — app tetap terbuka tanpa internet */
-const CACHE = 'kashirot-v1.1.0';
-const FILES = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/data-awal.js', 'lib/xlsx.full.min.js', 'lib/chart.umd.min.js',
+const CACHE = 'kashirot-v1.2.0';
+const FILES = ['./', 'index.html', 'css/app.css', 'js/app.js', 'js/config.js', 'js/data-awal.js', 'lib/xlsx.full.min.js', 'lib/chart.umd.min.js',
   'fonts/poppins-latin-400-normal.woff2', 'fonts/poppins-latin-600-normal.woff2', 'fonts/poppins-latin-700-normal.woff2',
   'icons/logo.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });

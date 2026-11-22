@@ -1,0 +1,28 @@
+# Push ke folder backend/ => Code.gs otomatis terpasang di Apps Script & Web App diperbarui (URL tetap sama).
+# Secrets repo (Settings > Secrets and variables > Actions):
+#   CLASPRC_JSON  = isi file ~/.clasprc.json setelah `clasp login` dengan Gmail yayasan
+#   SCRIPT_ID     = Apps Script > Project Settings > Script ID
+#   DEPLOYMENT_ID = Deploy > Manage deployments > Deployment ID (yang URL-nya dipakai aplikasi)
+name: Deploy backend (Apps Script)
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm i -g @google/clasp@2.4.2
+      - name: Tulis kredensial
+        run: |
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+          echo '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"."}' > backend/.clasp.json
+      - name: Push kode & perbarui deployment
+        working-directory: backend
+        run: |
+          clasp push -f
+          clasp deploy -i "${{ secrets.DEPLOYMENT_ID }}" -d "auto ${GITHUB_SHA::7}"
