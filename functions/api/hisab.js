@@ -1,7 +1,7 @@
 // HISAB AI lewat Cloudflare (cepat, jawaban mengalir). Env Cloudflare: GEMINI_API_KEY (Secret), KASHIROT_VIEW_TOKEN.
 // Balasan: text/plain yang mengalir. Kalau belum dipasang/semua model penuh -> status 503 + JSON, aplikasi beralih ke Apps Script.
 const MODELS = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'];
-const UJI = [['gemini-3.5-flash-lite', null], ['gemini-3.5-flash-lite', 'minimal'], ['gemini-3.5-flash-lite', 'low'], ['gemini-flash-lite-latest', null], ['gemini-3.8-flash', 'minimal'], ['gemini-3.8-flash', 'low']];
+const UJI = MODELS.map(m => [m, null]);
 const json = (o, s) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
 
 export async function onRequestPost({ request, env }) {

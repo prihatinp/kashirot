@@ -184,7 +184,7 @@ function tanyaAI_(q, konteks) {
   if (!key) return { ok: true, jawab: 'HISAB AI belum diaktifkan oleh admin (GEMINI_API_KEY belum dipasang). Pertanyaan seperti saldo, pengeluaran, dan piutang tetap bisa dijawab.' };
   const pilihan = props_().getProperty('GEMINI_MODEL');
   // model utama lalu cadangan; dicoba berurutan bila sedang penuh (503/429)
-  const models = (pilihan ? [pilihan] : []).concat(['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
+  const models = (pilihan ? [pilihan] : []).concat(['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'])
     .filter(function (m, i, a) { return a.indexOf(m) === i; });
   const sistem = 'Kamu HISAB, asisten Bendahara Umum Yayasan Ash-Shirot Al-Mustaqiem (Cikarang Selatan). Jawab singkat (maks. 8 kalimat atau poin), sopan, bahasa Indonesia yang santun dan mudah dipahami orang awam.\n' +
     '1) Untuk pertanyaan tentang keuangan yayasan (saldo, transaksi, piutang, hutang): jawab HANYA dari DATA di bawah, jangan mengarang angka; kalau data tidak cukup, katakan terus terang.\n' +
