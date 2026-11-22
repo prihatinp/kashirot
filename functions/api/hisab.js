@@ -20,7 +20,7 @@ export async function onRequestPost({ request, env }) {
     let r;
     try {
       r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
+        method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(12000),
         body: JSON.stringify({ systemInstruction: { parts: [{ text: sistem }] }, contents: [{ role: 'user', parts: [{ text: q }] }], generationConfig: gc })
       });
     } catch { continue; }
@@ -41,4 +41,22 @@ export async function onRequestPost({ request, env }) {
     return new Response(alir, { headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', 'x-hisab-model': m } });
   }
   return json({ ok: false, error: 'sibuk' }, 503);
+}
+
+// Diagnosa ringan: GET /api/hisab?cek=1 -> status & waktu tiap model (tanpa data yayasan, kunci tidak ditampilkan)
+export async function onRequestGet({ request, env }) {
+  if (!new URL(request.url).searchParams.has('cek')) return json({ ok: true, app: 'HISAB' }, 200);
+  const hasil = { kunci: !!env.GEMINI_API_KEY, colo: request.cf?.colo, negara: request.cf?.country, model: [] };
+  if (!env.GEMINI_API_KEY) return json(hasil, 200);
+  for (const m of MODELS) {
+    const t = Date.now(); let st, pesan = '';
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${env.GEMINI_API_KEY}`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(15000),
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Jawab satu kata: halo' }] }], generationConfig: { maxOutputTokens: 20, ...(/^gemini-2\.5/.test(m) ? { thinkingConfig: { thinkingBudget: 0 } } : {}) } }) });
+      st = r.status; if (!r.ok) pesan = ((await r.json().catch(() => ({}))).error?.message || '').slice(0, 160);
+    } catch (e) { st = 'gagal'; pesan = String(e.message || e).slice(0, 160); }
+    hasil.model.push({ m, st, ms: Date.now() - t, pesan });
+  }
+  return json(hasil, 200);
 }

@@ -6,7 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for i in 1 2; do
+          curl -sS -m 90 'https://kashirot.pages.dev/api/hisab?cek=1' -w "\n[total %{time_total}s]\n"; echo
+          for i in 1; do
           curl -sS -m 60 -X POST https://kashirot.pages.dev/api/hisab -H 'content-type: application/json' -H 'origin: https://kashirot.pages.dev' \
             -d '{"q":"apa itu ilmu akuntansi? jawab 1 kalimat","token":"ujicoba123"}' -D - \
             -w "\n[status %{http_code} | byte pertama %{time_starttransfer}s | total %{time_total}s]\n" | grep -iv "set-cookie\|cf-ray\|report-to\|nel:" | head -c 1500; echo; done
