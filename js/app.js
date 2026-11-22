@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.4';
+const VERSI = '1.3.5';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -1291,7 +1291,8 @@ async function ubahStatusTemuan(id, status) {
    ===================================================================== */
 VIEWS.menu = el => {
   const item = (go, ik, judul, sub) => `<button data-go2="${go}"><span class="i">${ik}</span><div>${judul}<small>${sub}</small></div><span class="p">›</span></button>`;
-  el.innerHTML = `<div class="sub-judul">Keuangan</div><div class="menu-list">
+  el.innerHTML = `${S.lihat ? `<button class="btn emas penuh" id="mKeBendahara" style="margin-bottom:6px">🔑 Masuk sebagai Bendahara</button><small style="display:block;text-align:center;color:var(--abu);margin-bottom:8px">HP ini sedang Mode Lihat. Bendahara: ketuk lalu isi token.</small>` : ''}
+    <div class="sub-judul">Keuangan</div><div class="menu-list">
       ${item('laporan', '🖨️', 'Laporan', 'PDF, Excel, kirim WA')}${item('rekon', '⚖️', 'Cek Saldo', 'Cocokkan uang aktual, kejar selisih nol')}
       ${item('piutang', '📤', 'Piutang', 'Pinjaman yayasan ke pihak lain')}${item('hutang', '📥', 'Hutang', 'Kewajiban yayasan')}${item('evaluasi', '📊', 'Evaluasi', 'Skor kesehatan & temuan')}</div>
     <div class="sub-judul">Data</div><div class="menu-list">
@@ -1301,6 +1302,7 @@ VIEWS.menu = el => {
     ${S.meta.pinHash ? '<button class="btn garis penuh" id="mKunci">🔒 Kunci aplikasi sekarang</button>' : ''}`;
   ikatUmum(el);
   $('#mKunci', el)?.addEventListener('click', () => tampilKunci());
+  $('#mKeBendahara', el)?.addEventListener('click', gantiKeBendahara);
 };
 VIEWS.profil = el => {
   const k = S.konfig || {};
@@ -1543,6 +1545,17 @@ function sambutan() {
       res(b.dataset.m);
     });
   });
+}
+async function gantiKeBendahara() {
+  if (!S.meta.syncUrl && !window.KASHIROT_API_URL) return pergi('sinkron');
+  const tok = await mintaTeks('🔑 Masuk sebagai Bendahara', 'Ketik TOKEN bendahara', '', 'password'); if (!tok) return;
+  const lama = S.meta.syncToken; S.meta.syncUrl = S.meta.syncUrl || window.KASHIROT_API_URL; S.meta.syncToken = tok.trim();
+  let r; try { r = await api({ action: 'ping' }); } catch (e) { S.meta.syncToken = lama; return toast('❌ ' + e.message, 3500); }
+  if (r.peran !== 'bendahara') { S.meta.syncToken = lama; return toast('❌ Itu bukan token bendahara', 3500); }
+  S.meta.hanyaLihat = false; S.meta.lihatDariToken = false; S.lihat = false; await simpanMeta();
+  await catatAudit('Masuk sebagai bendahara', S.meta.nama || 'perangkat ini');
+  toast(S.meta.pinHash ? '✅ Mode Bendahara aktif' : '✅ Mode Bendahara aktif. Buat PIN di Menu › Keamanan', 4000);
+  await sinkron(true); pergi('beranda');
 }
 async function batalMulai() { S.konfig = null; await DB.kosongkan('konfig'); S.meta = { id: 'perangkat' }; await simpanMeta(); location.reload(); }
 async function masukBendahara(pesan) {
