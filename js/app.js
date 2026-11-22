@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.9';
+const VERSI = '1.3.10';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -965,7 +965,8 @@ function bukaHisab() {
   tampil();
   const kirim = async q => {
     q = (q || '').trim(); if (!q) return; chatLog.push({ dari: 'saya', teks: q }); $('#chInp', el).value = ''; tampil();
-    const j = await jawabHisab(q); chatLog.push({ dari: 'bot', teks: j }); tampil();
+    const tunggu = { dari: 'bot', teks: '⏳ HISAB sedang berpikir…' }; chatLog.push(tunggu); tampil();
+    const j = await jawabHisab(q); tunggu.teks = j; tampil();
   };
   $('#chKirim', el).onclick = () => kirim($('#chInp', el).value);
   $('#chInp', el).onkeydown = e => { if (e.key === 'Enter') kirim(e.target.value); };

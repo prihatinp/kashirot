@@ -181,19 +181,37 @@ function ambilFoto_(driveId) {
 
 function tanyaAI_(q, konteks) {
   const key = props_().getProperty('GEMINI_API_KEY');
-  if (!key) return { ok: true, jawab: 'HISAB AI belum diaktifkan oleh admin (GEMINI_API_KEY belum dipasang). Pertanyaan seperti saldo, pengeluaran, piutang, dan temuan tetap bisa dijawab.' };
-  const model = props_().getProperty('GEMINI_MODEL') || 'gemini-flash-latest';
-  const sistem = 'Kamu HISAB, asisten Bendahara Umum Yayasan Ash-Shirot Al-Mustaqiem (Cikarang Selatan). Jawab singkat, sopan, bahasa Indonesia santai-santun, ' +
-    'berdasarkan DATA berikut saja. Jangan mengarang angka. Angka dalam Rupiah. Jika data tidak cukup, katakan terus terang.\n\nDATA:\n' + (konteks || '');
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key;
-  const res = UrlFetchApp.fetch(url, {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    payload: JSON.stringify({ systemInstruction: { parts: [{ text: sistem }] }, contents: [{ role: 'user', parts: [{ text: String(q || '') }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 800 } })
-  });
-  const j = JSON.parse(res.getContentText());
-  if (j.error) return { ok: true, jawab: 'HISAB AI error: ' + j.error.message };
-  const t = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts ? j.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('') : '';
-  return { ok: true, jawab: t || 'Maaf, tidak ada jawaban.' };
+  if (!key) return { ok: true, jawab: 'HISAB AI belum diaktifkan oleh admin (GEMINI_API_KEY belum dipasang). Pertanyaan seperti saldo, pengeluaran, dan piutang tetap bisa dijawab.' };
+  const pilihan = props_().getProperty('GEMINI_MODEL');
+  // model utama lalu cadangan; dicoba berurutan bila sedang penuh (503/429)
+  const models = (pilihan ? [pilihan] : []).concat(['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])
+    .filter(function (m, i, a) { return a.indexOf(m) === i; });
+  const sistem = 'Kamu HISAB, asisten Bendahara Umum Yayasan Ash-Shirot Al-Mustaqiem (Cikarang Selatan). Jawab singkat (maks. 8 kalimat atau poin), sopan, bahasa Indonesia yang santun dan mudah dipahami orang awam.\n' +
+    '1) Untuk pertanyaan tentang keuangan yayasan (saldo, transaksi, piutang, hutang): jawab HANYA dari DATA di bawah, jangan mengarang angka; kalau data tidak cukup, katakan terus terang.\n' +
+    '2) Untuk pertanyaan pengetahuan umum pembukuan, akuntansi, keuangan lembaga/yayasan, atau muamalah syariah: boleh dijawab dari pengetahuanmu, ringkas dan praktis untuk bendahara.\n' +
+    '3) Jangan memberi nasihat hukum/pajak yang pasti; sarankan konsultasi ahli bila perlu.\n\nDATA:\n' + (konteks || '');
+  const payload = JSON.stringify({ systemInstruction: { parts: [{ text: sistem }] }, contents: [{ role: 'user', parts: [{ text: String(q || '') }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 900 } });
+  let pesanTerakhir = '';
+  for (let i = 0; i < models.length; i++) {
+    for (let coba = 0; coba < 2; coba++) {
+      const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + key,
+        { method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: payload });
+      const kode = res.getResponseCode();
+      let j = {}; try { j = JSON.parse(res.getContentText()); } catch (e) { }
+      if (kode === 200 && !j.error) {
+        const t = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts ? j.candidates[0].content.parts.map(function (p) { return p.text || ''; }).join('') : '';
+        if (t) return { ok: true, jawab: t, model: models[i] };
+        pesanTerakhir = 'jawaban kosong'; break;
+      }
+      pesanTerakhir = (j.error && j.error.message) || ('HTTP ' + kode);
+      const sibuk = kode === 503 || kode === 429 || kode === 500 || /overloaded|high demand|unavailable|exhausted/i.test(pesanTerakhir);
+      if (kode === 404 || kode === 400) break;          // model tidak tersedia -> coba model berikutnya
+      if (kode === 401 || kode === 403) return { ok: true, jawab: 'HISAB AI: kunci GEMINI_API_KEY ditolak Google. Periksa kuncinya di Script Properties.' };
+      if (!sibuk) break;
+      Utilities.sleep(1200 * (coba + 1));                // tunggu sebentar lalu ulangi
+    }
+  }
+  return { ok: true, jawab: 'HISAB AI sedang sibuk (server Google penuh). Coba lagi 1–2 menit lagi ya. Pertanyaan soal saldo, pengeluaran, dan piutang tetap bisa dijawab langsung.' };
 }
 
 /** Opsional: buat sheet "LAPORAN" yang mudah dibaca pengurus langsung di Google Sheet. Jalankan manual / pasang trigger harian. */
