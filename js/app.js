@@ -4,8 +4,9 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.2.0';
+const VERSI = '1.2.1';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
+const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
 /* ---------------- util ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -283,6 +284,7 @@ VIEWS.beranda = el => {
   const bukuHtml = hidup(S.buku).sort((a, b) => (a.urut || 0) - (b.urut || 0)).map(b => { const s = saldoBuku(b.id); return `<div class="mini"><small>📘 ${esc(b.nama)}</small><b class="${s < 0 ? 'minus' : ''}">${rp(s)}</b></div>`; }).join('');
   const terbaru = hidup(S.tx).slice(0, 6);
   el.innerHTML = `
+    <div class="identitas"><img src="${LOGO_YYS}" alt="Logo Yayasan Ash-Shirot Al-Mustaqiem"><div><b>${esc(S.konfig?.yayasan || 'Yayasan Ash-Shirot Al-Mustaqiem')}</b><small>Bendahara Umum · ${esc(S.konfig?.kota || 'Cikarang Selatan')}</small><i>Menebar Sunnah dengan Hikmah</i></div></div>
     <div class="saldo-utama"><small>Total uang yayasan (semua akun)</small><div class="angka">${rp(tot)}</div>
       <div class="baris"><div>Masuk ${BLS[+bk.slice(5) - 1]}<b>${rp(r.masuk)}</b></div><div>Keluar ${BLS[+bk.slice(5) - 1]}<b>${rp(r.keluar)}</b></div></div></div>
     ${banner}
@@ -521,7 +523,7 @@ function bagikan(teks) {
 
 function kop() {
   const k = S.konfig || {};
-  return `<div class="kop"><img src="${LOGO}"><div><h1>${esc(k.yayasan || 'Yayasan Ash-Shirot Al-Mustaqiem')}</h1><p>${esc(k.alamat || 'Cikarang Selatan, Kabupaten Bekasi, Jawa Barat')}</p><p>Bendahara Umum</p></div></div>`;
+  return `<div class="kop"><img src="${LOGO_YYS}"><div><h1>${esc(k.yayasan || 'Yayasan Ash-Shirot Al-Mustaqiem')}</h1><p>${esc(k.alamat || 'Cikarang Selatan, Kabupaten Bekasi, Jawa Barat')}</p><p>Bendahara Umum</p></div></div>`;
 }
 function ttd(tgl) {
   const k = S.konfig || {};
@@ -1377,7 +1379,7 @@ VIEWS.audit = el => {
   el.innerHTML = arr.map(a => `<div class="tx"><div class="ik pindah">🕘</div><div class="isi"><b>${esc(a.aksi)}</b><small>${esc(a.detail)}</small><small>${new Date(a.waktu).toLocaleString('id-ID')} · ${esc(a.oleh || '')}${a.perangkat ? ' · ' + esc(a.perangkat) : ''}</small></div></div>`).join('') || '<div class="kosong">Belum ada aktivitas</div>';
 };
 VIEWS.tentang = el => {
-  el.innerHTML = `<div class="kartu" style="text-align:center"><img src="${LOGO}" style="width:90px"><h2 style="color:var(--hijau);margin-top:8px">KASHIROT</h2><div style="color:var(--emas);font-weight:600">Catat Amanah, Laporan Berkah</div><small>Kas Amanah Ash-Shirot · versi ${VERSI}</small>
+  el.innerHTML = `<div class="kartu" style="text-align:center"><div style="display:flex;gap:14px;justify-content:center;align-items:center"><img src="${LOGO}" style="width:84px"><img src="${LOGO_YYS}" style="width:84px"></div><h2 style="color:var(--hijau);margin-top:8px">KASHIROT</h2><div style="color:var(--emas);font-weight:600">Catat Amanah, Laporan Berkah</div><small>Kas Amanah Ash-Shirot · versi ${VERSI}</small>
     <p style="font-size:13.5px;text-align:left">Aplikasi Bendahara Umum <b>${esc(S.konfig?.yayasan || 'Yayasan Ash-Shirot Al-Mustaqiem')}</b>, Cikarang Selatan. Data tersimpan di HP ini (bisa dipakai tanpa internet) dan dapat disinkronkan ke Google Sheet yayasan.</p>
     <p style="font-size:13px;font-style:italic;color:var(--hijau)">"Sesungguhnya Allah menyuruh kamu menyampaikan amanat kepada yang berhak menerimanya." (QS. An-Nisa: 58)</p>
     <small style="color:var(--abu)">Data: ${hidup(S.tx).length} transaksi · ${hidup(S.pinjaman).length} piutang/hutang · ${hidup(S.rekon).length} cek saldo</small></div>`;
