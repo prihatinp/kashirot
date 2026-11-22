@@ -26,12 +26,12 @@ function props_() { return PropertiesService.getScriptProperties(); }
 
 function setup() {
   const p = props_();
-  if (!p.getProperty('TOKEN')) p.setProperty('TOKEN', 'KS-' + Utilities.getUuid().slice(0, 8).toUpperCase());
+  if (!p.getProperty('TOKEN') && !p.getProperty('TOKEN_HASH')) p.setProperty('TOKEN', 'KS-' + Utilities.getUuid().slice(0, 8).toUpperCase());
   if (!p.getProperty('TOKEN_LIHAT')) p.setProperty('TOKEN_LIHAT', 'LIHAT-' + Utilities.getUuid().slice(0, 6).toUpperCase());
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   STORES.forEach(function (s) { sheet_(s); });
   folder_();
-  Logger.log('TOKEN (bendahara)  : ' + p.getProperty('TOKEN'));
+  Logger.log('TOKEN (bendahara)  : ' + (p.getProperty('TOKEN') || '(sudah diganti sendiri oleh bendahara — tersimpan sebagai hash, tidak bisa dibaca)'));
   Logger.log('TOKEN_LIHAT (pengurus): ' + p.getProperty('TOKEN_LIHAT'));
   Logger.log('Spreadsheet: ' + ss.getName());
 }
@@ -59,6 +59,28 @@ function folder_() {
   return f;
 }
 
+/** Token bendahara bisa disimpan sebagai hash (setelah bendahara menggantinya sendiri dari aplikasi). */
+function hash_(s) { return Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'kashirot:' + s, Utilities.Charset.UTF_8)); }
+function cekBendahara_(tok) {
+  const p = props_(), h = p.getProperty('TOKEN_HASH');
+  if (!tok) return false;
+  if (h) return hash_(tok) === h;
+  return tok === p.getProperty('TOKEN');
+}
+function gantiToken_(baru) {
+  baru = String(baru || '').trim();
+  if (baru.length < 8) return { ok: false, error: 'Token minimal 8 karakter' };
+  if (baru === props_().getProperty('TOKEN_LIHAT')) return { ok: false, error: 'Token tidak boleh sama dengan token lihat' };
+  const p = props_(); p.setProperty('TOKEN_HASH', hash_(baru)); p.deleteProperty('TOKEN');
+  return { ok: true };
+}
+/** DARURAT: jika bendahara lupa token. Jalankan dari editor (akun pemilik), token baru muncul di Execution log. */
+function resetTokenBendahara() {
+  const p = props_(); const t = 'KS-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+  p.deleteProperty('TOKEN_HASH'); p.setProperty('TOKEN', t);
+  Logger.log('TOKEN bendahara baru: ' + t + '  (minta bendahara segera menggantinya sendiri dari aplikasi: Menu › Keamanan)');
+}
+
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
 function doGet() { return json_({ ok: true, app: 'KASHIROT', pesan: 'Backend aktif. Gunakan dari aplikasi.' }); }
@@ -69,10 +91,10 @@ function doPost(e) {
     const p = props_();
     const tok = req.token || '';
     let peran = null;
-    if (tok && tok === p.getProperty('TOKEN')) peran = 'bendahara';
+    if (cekBendahara_(tok)) peran = 'bendahara';
     else if (tok && tok === p.getProperty('TOKEN_LIHAT')) peran = 'lihat';
     if (!peran) return json_({ ok: false, error: 'Token salah' });
-    const tulis = ['push', 'foto'];
+    const tulis = ['push', 'foto', 'gantiToken'];
     if (tulis.indexOf(req.action) >= 0 && peran !== 'bendahara') return json_({ ok: false, error: 'Token lihat tidak boleh mengubah data' });
 
     switch (req.action) {
@@ -80,6 +102,7 @@ function doPost(e) {
       case 'push': return json_(push_(req.data || {}));
       case 'pull': return json_(pull_(Number(req.since) || 0));
       case 'foto': return json_(simpanFoto_(req.id, req.data));
+      case 'gantiToken': return json_(gantiToken_(req.baru));
       case 'getFoto': return json_(ambilFoto_(req.driveId));
       case 'ask': return json_(tanyaAI_(req.q, req.konteks));
       default: return json_({ ok: false, error: 'Aksi tidak dikenal: ' + req.action });

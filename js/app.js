@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.0';
+const VERSI = '1.3.1';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -1352,6 +1352,8 @@ VIEWS.keamanan = el => {
   const k = S.konfig || {};
   el.innerHTML = `<div class="kartu"><h3>🔢 PIN Bendahara</h3><small style="color:var(--abu)">Dipakai untuk membuka aplikasi. Aplikasi terkunci otomatis setelah 3 menit ditinggal.</small>
       <div class="baris-btn"><button class="btn utama" id="kPin">${S.meta.pinHash ? 'Ubah PIN' : 'Buat PIN'}</button>${S.meta.pinHash ? '<button class="btn bahaya" id="kPinHapus">Hapus PIN</button>' : ''}</div></div>
+    ${S.meta.syncUrl && bisaEdit() ? `<div class="kartu"><h3>🔑 Token bendahara</h3><small style="color:var(--abu)">Ganti token dengan buatan Anda sendiri (min. 8 karakter). Token disimpan sebagai sandi teracak di server: <b>tidak ada orang lain yang bisa melihatnya</b>, termasuk admin. Token lama otomatis tidak berlaku. Catat baik-baik; HP bendahara lain perlu masuk ulang dengan token baru.</small>
+      <div class="baris-btn"><button class="btn emas" id="kTok">Buat token sendiri</button></div></div>` : ''}
     <div class="kartu"><h3>👁️ PIN Mode Lihat</h3><small style="color:var(--abu)">Untuk Ketua/pengurus yang ingin melihat laporan di HP ini tanpa bisa mengubah data.</small>
       <div class="baris-btn"><button class="btn garis" id="kPinL">${S.meta.pinLihatHash ? 'Ubah PIN lihat' : 'Buat PIN lihat'}</button>${S.meta.pinLihatHash ? '<button class="btn bahaya" id="kPinLH">Hapus</button>' : ''}</div></div>
     <div class="kartu"><h3>🔒 Tutup Buku</h3><small style="color:var(--abu)">Transaksi sampai tanggal kunci tidak bisa diubah/dihapus. Membuka kunci wajib menulis alasan dan tercatat di riwayat.</small>
@@ -1359,6 +1361,13 @@ VIEWS.keamanan = el => {
       ${bisaEdit() ? `<label class="l">Kunci sampai tanggal</label><input type="date" class="inp" id="kTgl" value="${k.lockedUntil || akhirBln(geserBln(blnKey(hariIni()), -1))}"><div class="baris-btn"><button class="btn emas" id="kKunci">Tutup buku</button>${k.lockedUntil ? '<button class="btn garis" id="kBuka">Buka kunci</button>' : ''}</div>` : ''}</div>
     <div class="kartu"><h3>📱 Perangkat ini</h3><label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="kLihat" ${S.meta.hanyaLihat ? 'checked' : ''}> Jadikan perangkat ini <b>khusus lihat</b> (HP pengurus)</label></div>`;
   $('#kPin', el).onclick = () => aturPin('pinHash');
+  $('#kTok', el)?.addEventListener('click', async () => {
+    const t1 = await mintaTeks('Token bendahara baru', 'Minimal 8 karakter (huruf/angka). Jangan dibagikan ke siapa pun.', '', 'password'); if (t1 == null) return;
+    if (t1.trim().length < 8) return toast('Token minimal 8 karakter');
+    const t2 = await mintaTeks('Ulangi token baru', 'Ketik ulang token yang sama', '', 'password'); if (t1 !== t2) return toast('Token tidak sama');
+    try { await api({ action: 'gantiToken', baru: t1.trim() }); S.meta.syncToken = t1.trim(); await simpanMeta(); await catatAudit('Ganti token bendahara', 'Token bendahara diganti sendiri (tersimpan sebagai hash)'); toast('✅ Token baru aktif. Token lama sudah tidak berlaku.', 4000); }
+    catch (e) { toast('❌ ' + e.message, 4000); }
+  });
   $('#kPinL', el).onclick = () => aturPin('pinLihatHash');
   $('#kPinHapus', el)?.addEventListener('click', async () => { if (await tanya('Hapus PIN?', 'Aplikasi bisa dibuka siapa saja yang memegang HP ini.', 'Hapus', true)) { delete S.meta.pinHash; await simpanMeta(); await catatAudit('Hapus PIN', 'PIN bendahara dihapus'); render(); } });
   $('#kPinLH', el)?.addEventListener('click', async () => { delete S.meta.pinLihatHash; await simpanMeta(); render(); });
