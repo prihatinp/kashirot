@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.11';
+const VERSI = '1.3.12';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -967,7 +967,8 @@ function bukaHisab() {
     q = (q || '').trim(); if (!q) return; chatLog.push({ dari: 'saya', teks: q }); $('#chInp', el).value = ''; tampil();
     const tunggu = { dari: 'bot', teks: '⏳ HISAB sedang berpikir…' }; chatLog.push(tunggu); tampil();
     const t0 = Date.now(), jam = setInterval(() => { const d = Math.round((Date.now() - t0) / 1000); if (d >= 5) { tunggu.teks = `⏳ HISAB sedang berpikir… (${d} detik)`; tampil(); } }, 1000);
-    let j; try { j = await jawabHisab(q); } catch (e) { j = 'Maaf, HISAB sedang bermasalah: ' + e.message; } finally { clearInterval(jam); }
+    hisabAlir = t => { clearInterval(jam); tunggu.teks = t; tampil(); };
+    let j; try { j = await jawabHisab(q); } catch (e) { j = 'Maaf, HISAB sedang bermasalah: ' + e.message; } finally { clearInterval(jam); hisabAlir = null; }
     tunggu.teks = j; tampil();
   };
   $('#chKirim', el).onclick = () => kirim($('#chInp', el).value);
@@ -990,6 +991,19 @@ function periodeDariTeks(q) {
 function konteksAI() {
   const bk = blnKey(hariIni()); const r = ringkas(bk + '-01', akhirBln(bk)); const rk = rekonTerakhir();
   return `Yayasan: ${S.konfig?.yayasan}. Tanggal: ${hariIni()}.\nSaldo akun: ${hidup(S.akun).map(a => a.nama + ' ' + saldoAkun(a.id)).join('; ')}.\nSaldo buku: ${hidup(S.buku).map(b => b.nama + ' ' + saldoBuku(b.id)).join('; ')}.\nBulan ini masuk ${r.masuk}, keluar ${r.keluar}.\nCek saldo terakhir: ${rk ? rk.tanggal + ' selisih ' + rk.totalSelisih : 'belum'}.\nPiutang: ${hidup(S.pinjaman).filter(p => p.jenis === 'piutang').map(p => p.nama + ' ' + sisaPinjaman(p.id)).filter(s => !/ 0$/.test(s)).join('; ')}.\nHutang total: ${hidup(S.pinjaman).filter(p => p.jenis === 'hutang').reduce((s, p) => s + sisaPinjaman(p.id), 0)}.\nTemuan terbuka: ${daftarTemuan().filter(t => t.status !== 'selesai').map(t => t.judul + ' — ' + t.isi).join(' || ')}.\n50 transaksi terakhir: ${hidup(S.tx).slice(0, 50).map(t => `${t.tanggal} ${t.jenis} ${t.nominal} ${t.ket} [${namaKat(t.kategoriId)}/${namaBuku(t.bukuId)}]`).join(' | ')}`;
+}
+// Jalur cepat: Cloudflare /api/hisab (jawaban mengalir). null => pakai Apps Script.
+let hisabAlir = null;
+async function hisabCepat(q) {
+  try {
+    const ctl = new AbortController(), batas = setTimeout(() => ctl.abort(), 45000);
+    const r = await fetch('/api/hisab', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctl.signal,
+      body: JSON.stringify({ q, konteks: konteksAI(), token: window.KASHIROT_VIEW_TOKEN || S.meta.syncToken || '' }) });
+    if (!r.ok || !r.body || !/text\/plain/.test(r.headers.get('content-type') || '')) { clearTimeout(batas); return null; }
+    const baca = r.body.getReader(), dek = new TextDecoder(); let teks = '';
+    for (;;) { const { done, value } = await baca.read(); if (done) break; teks += dek.decode(value, { stream: true }); if (hisabAlir && teks) hisabAlir(teks); }
+    clearTimeout(batas); return teks.trim() || null;
+  } catch (e) { return null; }
 }
 async function jawabHisab(qAsli) {
   const j = await jawabHisabInti(qAsli);
@@ -1062,6 +1076,7 @@ async function jawabHisabInti(qAsli) {
   const hasil = kata.length > 2 ? hidup(S.tx).filter(t => (t.ket + ' ' + (t.pihak || '')).toLowerCase().includes(kata)).slice(0, 8) : [];
   if (hasil.length) return `Ketemu ${hasil.length} transaksi "${kata}":\n${hasil.map(t => `• ${tglIndo(t.tanggal)} ${t.jenis === 'masuk' ? '+' : '-'}${rp(t.nominal)} ${t.ket}`).join('\n')}`;
   if (S.meta.syncUrl && S.meta.aiOn !== false && navigator.onLine) {
+    const cepat = await hisabCepat(qAsli); if (cepat) return cepat;
     try { const r = await api({ action: 'ask', q: qAsli, konteks: konteksAI() }); if (r.jawab) return r.jawab; } catch (e) { return 'Maaf, HISAB AI sedang tidak bisa dihubungi. ' + e.message; }
   }
   return 'Afwan, HISAB belum paham pertanyaannya. Coba: "saldo pembangunan", "pengeluaran bulan lalu", "total piutang", "selisih terakhir", atau "keluar 50rb konsumsi".' + (S.meta.syncUrl ? '' : '\n\n(HISAB AI aktif setelah HP tersambung ke data yayasan.)');
