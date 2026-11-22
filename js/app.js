@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.5';
+const VERSI = '1.3.6';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -1291,7 +1291,8 @@ async function ubahStatusTemuan(id, status) {
    ===================================================================== */
 VIEWS.menu = el => {
   const item = (go, ik, judul, sub) => `<button data-go2="${go}"><span class="i">${ik}</span><div>${judul}<small>${sub}</small></div><span class="p">›</span></button>`;
-  el.innerHTML = `${S.lihat ? `<button class="btn emas penuh" id="mKeBendahara" style="margin-bottom:6px">🔑 Masuk sebagai Bendahara</button><small style="display:block;text-align:center;color:var(--abu);margin-bottom:8px">HP ini sedang Mode Lihat. Bendahara: ketuk lalu isi token.</small>` : ''}
+  el.innerHTML = `<div class="kartu" style="display:flex;align-items:center;gap:12px"><div style="font-size:26px">${S.lihat ? '👁️' : '🔑'}</div><div style="flex:1"><small style="color:var(--abu)">Mode sekarang</small><b style="display:block;font-size:15px">${S.lihat ? 'Mode Lihat' : 'Mode Bendahara'}</b></div>
+      ${S.lihat ? '<button class="btn emas kecil" id="mKeBendahara">🔑 Ke Mode Bendahara</button>' : '<button class="btn garis kecil" id="mKeLihat">👁️ Ke Mode Lihat</button>'}</div>
     <div class="sub-judul">Keuangan</div><div class="menu-list">
       ${item('laporan', '🖨️', 'Laporan', 'PDF, Excel, kirim WA')}${item('rekon', '⚖️', 'Cek Saldo', 'Cocokkan uang aktual, kejar selisih nol')}
       ${item('piutang', '📤', 'Piutang', 'Pinjaman yayasan ke pihak lain')}${item('hutang', '📥', 'Hutang', 'Kewajiban yayasan')}${item('evaluasi', '📊', 'Evaluasi', 'Skor kesehatan & temuan')}</div>
@@ -1303,6 +1304,11 @@ VIEWS.menu = el => {
   ikatUmum(el);
   $('#mKunci', el)?.addEventListener('click', () => tampilKunci());
   $('#mKeBendahara', el)?.addEventListener('click', gantiKeBendahara);
+  $('#mKeLihat', el)?.addEventListener('click', async () => {
+    if (!(await tanya('Pindah ke Mode Lihat?', 'HP ini hanya bisa melihat, tidak bisa mencatat. Untuk kembali: Menu › 🔑 Ke Mode Bendahara.', 'Pindah'))) return;
+    S.meta.hanyaLihat = true; S.meta.lihatDariToken = false; S.lihat = true; await simpanMeta(); await catatAudit('Pindah ke Mode Lihat', S.meta.nama || 'perangkat ini');
+    toast('👁️ Mode Lihat aktif'); render();
+  });
 };
 VIEWS.profil = el => {
   const k = S.konfig || {};
@@ -1547,7 +1553,19 @@ function sambutan() {
   });
 }
 async function gantiKeBendahara() {
-  if (!S.meta.syncUrl && !window.KASHIROT_API_URL) return pergi('sinkron');
+  if (!S.meta.syncUrl && !window.KASHIROT_API_URL) {
+    if (S.meta.pinHash) { const pin = await mintaTeks('🔑 Ke Mode Bendahara', 'Masukkan PIN bendahara', '', 'password'); if (!pin) return; if ((await hashPin(pin)) !== S.meta.pinHash) return toast('❌ PIN salah'); }
+    S.meta.hanyaLihat = false; S.lihat = false; await simpanMeta(); toast('✅ Mode Bendahara aktif'); return render();
+  }
+  // token yang tersimpan sudah token bendahara (mis. tadi pindah ke Mode Lihat secara manual): cukup PIN
+  if (S.meta.syncToken && !S.meta.lihatDariToken) {
+    let pr = null; try { pr = (await api({ action: 'ping' })).peran; } catch (e) { }
+    if (pr === 'bendahara') {
+      if (S.meta.pinHash) { const pin = await mintaTeks('🔑 Ke Mode Bendahara', 'Masukkan PIN bendahara', '', 'password'); if (!pin) return; if ((await hashPin(pin)) !== S.meta.pinHash) return toast('❌ PIN salah'); }
+      S.meta.hanyaLihat = false; S.lihat = false; await simpanMeta(); await catatAudit('Masuk sebagai bendahara', S.meta.nama || 'perangkat ini');
+      toast('✅ Mode Bendahara aktif'); return pergi('beranda');
+    }
+  }
   const tok = await mintaTeks('🔑 Masuk sebagai Bendahara', 'Ketik TOKEN bendahara', '', 'password'); if (!tok) return;
   const lama = S.meta.syncToken; S.meta.syncUrl = S.meta.syncUrl || window.KASHIROT_API_URL; S.meta.syncToken = tok.trim();
   let r; try { r = await api({ action: 'ping' }); } catch (e) { S.meta.syncToken = lama; return toast('❌ ' + e.message, 3500); }
