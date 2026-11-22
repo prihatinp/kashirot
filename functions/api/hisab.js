@@ -1,6 +1,7 @@
 // HISAB AI lewat Cloudflare (cepat, jawaban mengalir). Env Cloudflare: GEMINI_API_KEY (Secret), KASHIROT_VIEW_TOKEN.
 // Balasan: text/plain yang mengalir. Kalau belum dipasang/semua model penuh -> status 503 + JSON, aplikasi beralih ke Apps Script.
-const MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+const MODELS = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.8-flash', 'gemini-flash-latest'];
+const UJI = [['gemini-3.5-flash-lite', null], ['gemini-3.5-flash-lite', 'minimal'], ['gemini-3.5-flash-lite', 'low'], ['gemini-flash-lite-latest', null], ['gemini-3.8-flash', 'minimal'], ['gemini-3.8-flash', 'low']];
 const json = (o, s) => new Response(JSON.stringify(o), { status: s, headers: { 'content-type': 'application/json' } });
 
 export async function onRequestPost({ request, env }) {
@@ -48,15 +49,15 @@ export async function onRequestGet({ request, env }) {
   if (!new URL(request.url).searchParams.has('cek')) return json({ ok: true, app: 'HISAB' }, 200);
   const hasil = { kunci: !!env.GEMINI_API_KEY, colo: request.cf?.colo, negara: request.cf?.country, model: [] };
   if (!env.GEMINI_API_KEY) return json(hasil, 200);
-  for (const m of MODELS) {
+  for (const [m, lv] of UJI) {
     const t = Date.now(); let st, pesan = '';
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${env.GEMINI_API_KEY}`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(15000),
-        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Jawab satu kata: halo' }] }], generationConfig: { maxOutputTokens: 20, ...(/^gemini-2\.5/.test(m) ? { thinkingConfig: { thinkingBudget: 0 } } : {}) } }) });
+        body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Jawab satu kata: halo' }] }], generationConfig: { maxOutputTokens: 200, ...(lv ? { thinkingConfig: { thinkingLevel: lv } } : {}) } }) });
       st = r.status; if (!r.ok) pesan = ((await r.json().catch(() => ({}))).error?.message || '').slice(0, 160);
     } catch (e) { st = 'gagal'; pesan = String(e.message || e).slice(0, 160); }
-    hasil.model.push({ m, st, ms: Date.now() - t, pesan });
+    hasil.model.push({ m, lv, st, ms: Date.now() - t, pesan });
   }
   return json(hasil, 200);
 }
