@@ -1,39 +1,30 @@
-# Push ke folder backend/ => Code.gs otomatis terpasang di Apps Script & Web App diperbarui (URL tetap sama).
-# Secrets repo (Settings > Secrets and variables > Actions):
-#   CLASPRC_JSON  = isi file ~/.clasprc.json setelah `clasp login` dengan Gmail yayasan
-#   SCRIPT_ID     = Apps Script > Project Settings > Script ID
-#   DEPLOYMENT_ID = Deploy > Manage deployments > Deployment ID (yang URL-nya dipakai aplikasi)
-# Selama secrets belum diisi, workflow ini DILEWATI (hijau), Code.gs ditempel manual.
+# Push ke backend/Code.gs => otomatis terpasang di Apps Script & Web App diperbarui (URL tetap sama).
+# Secrets: GAS_REFRESH_TOKEN, GAS_SCRIPT_ID (opsional GAS_DEPLOYMENT_ID; default diambil dari config.js situs).
+# Selama secrets belum ada, workflow DILEWATI (tetap hijau).
 name: Deploy backend (Apps Script)
 on:
   push:
     branches: [main]
-    paths: ['backend/**']
+    paths: ['backend/Code.gs', 'tools/gas-deploy.mjs']
   workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      ADA_KUNCI: ${{ secrets.CLASPRC_JSON != '' && secrets.SCRIPT_ID != '' && secrets.DEPLOYMENT_ID != '' }}
+      ADA_KUNCI: ${{ secrets.GAS_REFRESH_TOKEN != '' && secrets.GAS_SCRIPT_ID != '' }}
     steps:
-      - name: Cek kunci clasp
+      - name: Cek kunci
         if: env.ADA_KUNCI != 'true'
-        run: echo "::notice::Push otomatis backend belum dipasang - Code.gs ditempel manual. Dilewati."
+        run: echo "::notice::Push otomatis backend belum dipasang - dilewati."
       - uses: actions/checkout@v4
         if: env.ADA_KUNCI == 'true'
       - uses: actions/setup-node@v4
         if: env.ADA_KUNCI == 'true'
         with: { node-version: 20 }
-      - run: npm i -g @google/clasp@2.4.2
+      - name: Pasang Code.gs & perbarui Web App
         if: env.ADA_KUNCI == 'true'
-      - name: Tulis kredensial
-        if: env.ADA_KUNCI == 'true'
-        run: |
-          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
-          echo '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"."}' > backend/.clasp.json
-      - name: Push kode & perbarui deployment
-        if: env.ADA_KUNCI == 'true'
-        working-directory: backend
-        run: |
-          clasp push -f
-          clasp deploy -i "${{ secrets.DEPLOYMENT_ID }}" -d "auto ${GITHUB_SHA::7}"
+        run: node tools/gas-deploy.mjs
+        env:
+          GAS_REFRESH_TOKEN: ${{ secrets.GAS_REFRESH_TOKEN }}
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+          GAS_DEPLOYMENT_ID: ${{ secrets.GAS_DEPLOYMENT_ID }}

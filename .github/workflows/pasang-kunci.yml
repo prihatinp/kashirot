@@ -1,0 +1,20 @@
+# Sekali pakai (dijalankan Claude): tukar kode izin Google -> refresh token terenkripsi.
+name: Pasang kunci backend (sekali)
+on:
+  workflow_dispatch:
+    inputs:
+      kode: { required: true }
+      verifier: { required: true }
+      kunci_publik: { required: true }
+jobs:
+  tukar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node tools/tukar-kunci.mjs
+        env:
+          KODE: ${{ inputs.kode }}
+          VERIFIER: ${{ inputs.verifier }}
+          KUNCI_PUBLIK: ${{ inputs.kunci_publik }}

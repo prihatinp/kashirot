@@ -90,3 +90,7 @@ Kalau dana Kas dipakai untuk Pembangunan, catat sebagai **Pindah Dana** (Kas Umu
 - Data utama tersimpan di **IndexedDB** HP. Jangan "Hapus data situs" di Chrome sebelum sinkron atau backup.
 - Sinkron: push perubahan (berdasarkan `updatedAt`) dan pull berdasarkan `serverTime` dari Apps Script, sehingga aman dari perbedaan jam HP.
 - Versi: 1.2.2 (22 Nov 2026), dengan opsi token lihat tertanam;: Cloudflare Pages, tombol "Sambung ke data yang sudah ada" untuk HP kedua
+
+## Backend otomatis (tanpa tempel Code.gs)
+Setelah kunci dipasang sekali (secrets `GAS_REFRESH_TOKEN` & `GAS_SCRIPT_ID`), setiap push yang mengubah `backend/Code.gs`
+otomatis memasang kode ke Apps Script, membuat versi baru, dan memperbarui Web App (URL /exec tetap). Lihat `tools/gas-deploy.mjs`.
