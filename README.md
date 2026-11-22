@@ -30,6 +30,7 @@ backend/Code.gs         Google Apps Script untuk sinkron (opsional)
    - Production branch: `main` · Framework preset: **None**
    - Build command: `bash cloudflare-build.sh` · Build output directory: `dist`
    - Environment variables: `KASHIROT_API_URL` = URL `/exec` Apps Script
+   - (Opsional) `KASHIROT_VIEW_TOKEN` = TOKEN_LIHAT → siapa pun yang punya link bisa *Sambung* langsung dalam **mode lihat** tanpa mengetik token. Hapus variabel ini (lalu Retry deployment) kalau link sempat tersebar.
 5. **Save and Deploy**. Setiap push ke `main` otomatis tayang ulang.
 6. Di HP, buka alamat itu di Chrome, lalu ⋮ › **Instal aplikasi**.
 
@@ -88,4 +89,4 @@ Kalau dana Kas dipakai untuk Pembangunan, catat sebagai **Pindah Dana** (Kas Umu
 ## Catatan teknis
 - Data utama tersimpan di **IndexedDB** HP. Jangan "Hapus data situs" di Chrome sebelum sinkron atau backup.
 - Sinkron: push perubahan (berdasarkan `updatedAt`) dan pull berdasarkan `serverTime` dari Apps Script, sehingga aman dari perbedaan jam HP.
-- Versi: 1.2.0 (22 Nov 2026): Cloudflare Pages, tombol "Sambung ke data yang sudah ada" untuk HP kedua
+- Versi: 1.2.2 (22 Nov 2026), dengan opsi token lihat tertanam;: Cloudflare Pages, tombol "Sambung ke data yang sudah ada" untuk HP kedua

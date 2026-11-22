@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.2.1';
+const VERSI = '1.2.2';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -1395,6 +1395,16 @@ async function api(payload) {
 }
 let timerSinkron = null, sedangSinkron = false;
 function jadwalSinkron() { if (!S.meta.syncUrl || S.meta.autoSync === false) return; clearTimeout(timerSinkron); timerSinkron = setTimeout(() => sinkron(true), 4000); }
+async function sambungOtomatis() {
+  S.meta.syncUrl = window.KASHIROT_API_URL; S.meta.syncToken = window.KASHIROT_VIEW_TOKEN; await simpanMeta();
+  toast('Menyambung ke data yayasan...', 2500);
+  try {
+    const r = await api({ action: 'ping' });
+    if (r.peran === 'lihat') { S.meta.hanyaLihat = true; S.meta.lihatDariToken = true; S.lihat = true; await simpanMeta(); }
+    await sinkron(false); for (const k of ['buku', 'akun', 'kategori']) S[k].sort((a, b) => (a.urut || 0) - (b.urut || 0));
+    pergi('beranda'); toast('👁️ Tersambung dalam mode lihat. Bendahara: Menu › Sinkron, ganti dengan TOKEN bendahara.', 5000);
+  } catch (e) { toast('Gagal menyambung: ' + e.message, 4000); pergi('sinkron'); }
+}
 async function sinkron(diam) {
   if (!S.meta.syncUrl || sedangSinkron || !navigator.onLine) { if (!diam && !navigator.onLine) toast('Sedang offline. Data aman di HP, sinkron nanti.'); return; }
   sedangSinkron = true; $('#btnSync').style.animation = 'geleng 1s infinite';
@@ -1450,7 +1460,8 @@ VIEWS.sinkron = el => {
   $('#sSimpan', el).onclick = async () => {
     m.syncUrl = $('#sUrl', el).value.trim(); m.syncToken = $('#sTok', el).value.trim(); m.autoSync = $('#sAuto', el).checked; m.aiOn = $('#sAi', el).checked; await simpanMeta();
     if (!m.syncUrl) return toast('Disimpan (sinkron nonaktif)');
-    try { const r = await api({ action: 'ping' }); if (r.peran === 'lihat') { S.meta.hanyaLihat = true; S.lihat = true; await simpanMeta(); } toast(`✅ Terhubung (${r.peran === 'lihat' ? 'akses lihat' : 'akses bendahara'}) · ${r.sheet || ''}`); render();
+    try { const r = await api({ action: 'ping' }); if (r.peran === 'lihat') { S.meta.hanyaLihat = true; S.meta.lihatDariToken = true; S.lihat = true; await simpanMeta(); }
+    else if (r.peran === 'bendahara' && S.meta.lihatDariToken) { S.meta.hanyaLihat = false; S.meta.lihatDariToken = false; S.lihat = false; await simpanMeta(); } toast(`✅ Terhubung (${r.peran === 'lihat' ? 'akses lihat' : 'akses bendahara'}) · ${r.sheet || ''}`); render();
     if (S.meta.modeSambung && !S.meta.lastPull) { await sinkron(false); for (const k of ['buku', 'akun', 'kategori']) S[k].sort((a, b) => (a.urut || 0) - (b.urut || 0)); pergi('beranda'); } } catch (e) { toast('❌ ' + e.message, 4000); }
   };
   $('#sGo', el).onclick = () => sinkron(false);
@@ -1505,7 +1516,7 @@ function sambutan() {
       <label class="l">Nama Bendahara Umum</label><input class="inp" id="wBend" placeholder="mis. Bp. Fulan">
       <label class="l">Nama Ketua Yayasan (untuk tanda tangan laporan)</label><input class="inp" id="wKetua" placeholder="opsional">
       <div class="baris-btn" style="flex-direction:column">${adaSeed() ? '<button class="btn utama penuh" data-m="seed">🔐 Buka data yayasan (sudah disiapkan)</button>' : ''}<button class="btn ${adaSeed() ? 'garis' : 'utama'} penuh" data-m="impor">📗 Mulai & import Excel lama</button><button class="btn emas penuh" data-m="baru">✨ Mulai dari kosong</button><button class="btn garis penuh" data-m="demo">👀 Coba dengan data contoh</button></div>
-      <div class="banner info" style="margin-top:12px">📲 <div><b>HP kedua?</b> (HP Ketua/pengurus, atau HP bendahara yang baru) Data yayasan sudah ada di Google Sheet. Cukup sambungkan, tidak perlu isi apa-apa.</div></div>
+      <div class="banner info" style="margin-top:12px">📲 <div><b>Pengurus / HP kedua?</b> Data yayasan sudah ada di Google Sheet. Cukup sambungkan${window.KASHIROT_VIEW_TOKEN ? ' (langsung mode lihat, tanpa token)' : ''}.</div></div>
       <button class="btn utama penuh" data-m="sambung">📲 Sambung ke data yang sudah ada</button>`, { wajib: true });
     $$('[data-m]', el).forEach(b => b.onclick = async () => {
       if (b.dataset.m === 'sambung') {
@@ -1562,7 +1573,9 @@ async function mulai() {
   });
   window.addEventListener('online', () => jadwalSinkron());
   render();
-  if (!S.konfig) { const m = await sambutan(); pergi(m === 'impor' ? 'impor' : m === 'sambung' ? 'sinkron' : 'beranda'); if (m === 'sambung') toast(S.meta.syncUrlBawaan ? 'Alamat backend sudah terisi. Cukup isi token, lalu Simpan & tes' : 'Isi alamat Web App + token, lalu Simpan & tes', 4500); if (m === 'seed') await muatSeedDialog(); }
+  if (!S.konfig) { const m = await sambutan();
+    if (m === 'sambung' && window.KASHIROT_API_URL && window.KASHIROT_VIEW_TOKEN) { await sambungOtomatis(); }
+    else pergi(m === 'impor' ? 'impor' : m === 'sambung' ? 'sinkron' : 'beranda'); if (m === 'sambung' && !window.KASHIROT_VIEW_TOKEN) toast(S.meta.syncUrlBawaan ? 'Alamat backend sudah terisi. Cukup isi token, lalu Simpan & tes' : 'Isi alamat Web App + token, lalu Simpan & tes', 4500); if (m === 'seed') await muatSeedDialog(); }
   else if (S.meta.pinHash) await tampilKunci();
   if (S.meta.syncUrl) setTimeout(() => sinkron(true), 1500);
   if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.KASHIROT_STANDALONE) navigator.serviceWorker.register('sw.js').catch(() => { });
