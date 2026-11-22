@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.6';
+const VERSI = '1.3.7';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -1304,11 +1304,7 @@ VIEWS.menu = el => {
   ikatUmum(el);
   $('#mKunci', el)?.addEventListener('click', () => tampilKunci());
   $('#mKeBendahara', el)?.addEventListener('click', gantiKeBendahara);
-  $('#mKeLihat', el)?.addEventListener('click', async () => {
-    if (!(await tanya('Pindah ke Mode Lihat?', 'HP ini hanya bisa melihat, tidak bisa mencatat. Untuk kembali: Menu › 🔑 Ke Mode Bendahara.', 'Pindah'))) return;
-    S.meta.hanyaLihat = true; S.meta.lihatDariToken = false; S.lihat = true; await simpanMeta(); await catatAudit('Pindah ke Mode Lihat', S.meta.nama || 'perangkat ini');
-    toast('👁️ Mode Lihat aktif'); render();
-  });
+  $('#mKeLihat', el)?.addEventListener('click', keModeLihat);
 };
 VIEWS.profil = el => {
   const k = S.konfig || {};
@@ -1380,7 +1376,7 @@ VIEWS.keamanan = el => {
   $('#kPinLH', el)?.addEventListener('click', async () => { delete S.meta.pinLihatHash; await simpanMeta(); render(); });
   $('#kKunci', el)?.addEventListener('click', async () => { const t = $('#kTgl', el).value; if (!t) return; if (!(await tanya('Tutup buku?', `Transaksi s/d ${tglIndo(t, true)} akan dikunci.`, 'Tutup buku'))) return; S.konfig.lockedUntil = t; await simpan('konfig', S.konfig, 'Tutup buku s/d ' + tglIndo(t)); render(); });
   $('#kBuka', el)?.addEventListener('click', async () => { const alasan = await mintaTeks('Buka kunci tutup buku', 'Alasan membuka (wajib, tercatat di riwayat)'); if (!alasan || alasan.trim().length < 5) return toast('Alasan wajib diisi (min 5 huruf)'); S.konfig.lockedUntil = ''; await simpan('konfig', S.konfig, 'Buka tutup buku: ' + alasan.trim()); render(); });
-  $('#kLihat', el).onchange = async e => { if (e.target.checked && !(await tanya('Khusus lihat?', 'Semua tombol tambah/ubah akan disembunyikan di perangkat ini. Bisa dibatalkan lagi dari sini dengan PIN bendahara.'))) { e.target.checked = false; return; } if (!e.target.checked && S.meta.pinHash) { const p = await mintaTeks('Konfirmasi', 'PIN bendahara', '', 'password'); if (!p || (await hashPin(p)) !== S.meta.pinHash) { e.target.checked = true; return toast('PIN salah'); } } S.meta.hanyaLihat = e.target.checked; S.lihat = e.target.checked; await simpanMeta(); render(); };
+  $('#kLihat', el).onchange = async e => { if (e.target.checked) await keModeLihat(); else { e.target.checked = true; await gantiKeBendahara(); } };
 };
 async function aturPin(kunci) {
   const p1 = await mintaTeks('PIN baru', 'Masukkan 4–6 angka', '', 'password'); if (p1 == null) return;
@@ -1553,27 +1549,37 @@ function sambutan() {
   });
 }
 async function gantiKeBendahara() {
-  if (!S.meta.syncUrl && !window.KASHIROT_API_URL) {
-    if (S.meta.pinHash) { const pin = await mintaTeks('🔑 Ke Mode Bendahara', 'Masukkan PIN bendahara', '', 'password'); if (!pin) return; if ((await hashPin(pin)) !== S.meta.pinHash) return toast('❌ PIN salah'); }
-    S.meta.hanyaLihat = false; S.lihat = false; await simpanMeta(); toast('✅ Mode Bendahara aktif'); return render();
+  // ATURAN: pindah ke Mode Bendahara SELALU wajib PIN bendahara atau token bendahara.
+  const adaServer = !!(S.meta.syncUrl || window.KASHIROT_API_URL);
+  if (!S.meta.pinHash && !adaServer) return toast('Buat PIN bendahara dulu di Menu › Keamanan', 3500);
+  const isian = await mintaTeks('🔑 Masuk Mode Bendahara', S.meta.pinHash ? (adaServer ? 'Masukkan PIN atau token bendahara' : 'Masukkan PIN bendahara') : 'Masukkan token bendahara', '', 'password');
+  if (!isian || !isian.trim()) return;
+  const v = isian.trim();
+  let lolos = false;
+  // 1) PIN bendahara perangkat ini — hanya sah bila token tersimpan memang token bendahara (atau tidak ada server)
+  if (S.meta.pinHash && (await hashPin(v)) === S.meta.pinHash) {
+    if (!adaServer) lolos = true;
+    else if (S.meta.syncToken) { try { lolos = (await api({ action: 'ping' })).peran === 'bendahara'; } catch (e) { lolos = !navigator.onLine && !S.meta.lihatDariToken; } }
+    if (!lolos) return toast('❌ HP ini belum terdaftar sebagai HP bendahara. Masukkan token bendahara.', 4000);
   }
-  // token yang tersimpan sudah token bendahara (mis. tadi pindah ke Mode Lihat secara manual): cukup PIN
-  if (S.meta.syncToken && !S.meta.lihatDariToken) {
-    let pr = null; try { pr = (await api({ action: 'ping' })).peran; } catch (e) { }
-    if (pr === 'bendahara') {
-      if (S.meta.pinHash) { const pin = await mintaTeks('🔑 Ke Mode Bendahara', 'Masukkan PIN bendahara', '', 'password'); if (!pin) return; if ((await hashPin(pin)) !== S.meta.pinHash) return toast('❌ PIN salah'); }
-      S.meta.hanyaLihat = false; S.lihat = false; await simpanMeta(); await catatAudit('Masuk sebagai bendahara', S.meta.nama || 'perangkat ini');
-      toast('✅ Mode Bendahara aktif'); return pergi('beranda');
-    }
+  // 2) token bendahara
+  if (!lolos && adaServer) {
+    const lama = S.meta.syncToken; S.meta.syncUrl = S.meta.syncUrl || window.KASHIROT_API_URL; S.meta.syncToken = v;
+    let r = null; try { r = await api({ action: 'ping' }); } catch (e) { }
+    if (r && r.peran === 'bendahara') lolos = true; else { S.meta.syncToken = lama; }
   }
-  const tok = await mintaTeks('🔑 Masuk sebagai Bendahara', 'Ketik TOKEN bendahara', '', 'password'); if (!tok) return;
-  const lama = S.meta.syncToken; S.meta.syncUrl = S.meta.syncUrl || window.KASHIROT_API_URL; S.meta.syncToken = tok.trim();
-  let r; try { r = await api({ action: 'ping' }); } catch (e) { S.meta.syncToken = lama; return toast('❌ ' + e.message, 3500); }
-  if (r.peran !== 'bendahara') { S.meta.syncToken = lama; return toast('❌ Itu bukan token bendahara', 3500); }
+  if (!lolos) return toast('❌ PIN / token salah. Tetap di Mode Lihat.', 3500);
   S.meta.hanyaLihat = false; S.meta.lihatDariToken = false; S.lihat = false; await simpanMeta();
-  await catatAudit('Masuk sebagai bendahara', S.meta.nama || 'perangkat ini');
+  await catatAudit('Masuk Mode Bendahara', S.meta.nama || 'perangkat ini');
   toast(S.meta.pinHash ? '✅ Mode Bendahara aktif' : '✅ Mode Bendahara aktif. Buat PIN di Menu › Keamanan', 4000);
-  await sinkron(true); pergi('beranda');
+  if (adaServer) await sinkron(true);
+  pergi('beranda');
+}
+async function keModeLihat() {
+  // ATURAN: pindah ke Mode Lihat langsung, tanpa pertanyaan.
+  S.meta.hanyaLihat = true; S.meta.lihatDariToken = false; S.lihat = true; await simpanMeta();
+  await catatAudit('Pindah ke Mode Lihat', S.meta.nama || 'perangkat ini');
+  toast('👁️ Mode Lihat aktif'); render();
 }
 async function batalMulai() { S.konfig = null; await DB.kosongkan('konfig'); S.meta = { id: 'perangkat' }; await simpanMeta(); location.reload(); }
 async function masukBendahara(pesan) {
