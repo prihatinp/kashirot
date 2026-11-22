@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.10';
+const VERSI = '1.3.11';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -966,7 +966,9 @@ function bukaHisab() {
   const kirim = async q => {
     q = (q || '').trim(); if (!q) return; chatLog.push({ dari: 'saya', teks: q }); $('#chInp', el).value = ''; tampil();
     const tunggu = { dari: 'bot', teks: '⏳ HISAB sedang berpikir…' }; chatLog.push(tunggu); tampil();
-    const j = await jawabHisab(q); tunggu.teks = j; tampil();
+    const t0 = Date.now(), jam = setInterval(() => { const d = Math.round((Date.now() - t0) / 1000); if (d >= 5) { tunggu.teks = `⏳ HISAB sedang berpikir… (${d} detik)`; tampil(); } }, 1000);
+    let j; try { j = await jawabHisab(q); } catch (e) { j = 'Maaf, HISAB sedang bermasalah: ' + e.message; } finally { clearInterval(jam); }
+    tunggu.teks = j; tampil();
   };
   $('#chKirim', el).onclick = () => kirim($('#chInp', el).value);
   $('#chInp', el).onkeydown = e => { if (e.key === 'Enter') kirim(e.target.value); };
@@ -1412,8 +1414,12 @@ VIEWS.tentang = el => {
    ===================================================================== */
 async function api(payload) {
   if (!S.meta.syncUrl) throw new Error('Alamat sinkron belum diisi');
-  const r = await fetch(S.meta.syncUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token: S.meta.syncToken, ...payload }) });
-  const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Gagal'); return j;
+  const ctl = new AbortController(), batas = setTimeout(() => ctl.abort(), payload.action === 'ask' ? 60000 : 120000);
+  try {
+    const r = await fetch(S.meta.syncUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ token: S.meta.syncToken, ...payload }), signal: ctl.signal });
+    const j = await r.json(); if (!j.ok) throw new Error(j.error || 'Gagal'); return j;
+  } catch (e) { if (e.name === 'AbortError') throw new Error('Server terlalu lama menjawab, coba lagi sebentar.'); throw e; }
+  finally { clearTimeout(batas); }
 }
 let timerSinkron = null, sedangSinkron = false;
 function jadwalSinkron() { if (!S.meta.syncUrl || S.meta.autoSync === false) return; clearTimeout(timerSinkron); timerSinkron = setTimeout(() => sinkron(true), 4000); }

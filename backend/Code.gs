@@ -184,18 +184,25 @@ function tanyaAI_(q, konteks) {
   if (!key) return { ok: true, jawab: 'HISAB AI belum diaktifkan oleh admin (GEMINI_API_KEY belum dipasang). Pertanyaan seperti saldo, pengeluaran, dan piutang tetap bisa dijawab.' };
   const pilihan = props_().getProperty('GEMINI_MODEL');
   // model utama lalu cadangan; dicoba berurutan bila sedang penuh (503/429)
-  const models = (pilihan ? [pilihan] : []).concat(['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'])
+  const models = (pilihan ? [pilihan] : []).concat(['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest'])
     .filter(function (m, i, a) { return a.indexOf(m) === i; });
   const sistem = 'Kamu HISAB, asisten Bendahara Umum Yayasan Ash-Shirot Al-Mustaqiem (Cikarang Selatan). Jawab singkat (maks. 8 kalimat atau poin), sopan, bahasa Indonesia yang santun dan mudah dipahami orang awam.\n' +
     '1) Untuk pertanyaan tentang keuangan yayasan (saldo, transaksi, piutang, hutang): jawab HANYA dari DATA di bawah, jangan mengarang angka; kalau data tidak cukup, katakan terus terang.\n' +
     '2) Untuk pertanyaan pengetahuan umum pembukuan, akuntansi, keuangan lembaga/yayasan, atau muamalah syariah: boleh dijawab dari pengetahuanmu, ringkas dan praktis untuk bendahara.\n' +
     '3) Jangan memberi nasihat hukum/pajak yang pasti; sarankan konsultasi ahli bila perlu.\n\nDATA:\n' + (konteks || '');
-  const payload = JSON.stringify({ systemInstruction: { parts: [{ text: sistem }] }, contents: [{ role: 'user', parts: [{ text: String(q || '') }] }], generationConfig: { temperature: 0.3, maxOutputTokens: 900 } });
+  // gemini-2.5: matikan mode "berpikir" supaya cepat; model lain pakai bawaan
+  const buatPayload = function (m) {
+    const gc = { temperature: 0.3, maxOutputTokens: 2048 };
+    if (/^gemini-2\.5/.test(m)) gc.thinkingConfig = { thinkingBudget: 0 };
+    return JSON.stringify({ systemInstruction: { parts: [{ text: sistem }] }, contents: [{ role: 'user', parts: [{ text: String(q || '') }] }], generationConfig: gc });
+  };
+  const mulai = Date.now(), BATAS = 40000;            // jangan biarkan pengguna menunggu lebih dari ~40 detik
   let pesanTerakhir = '';
   for (let i = 0; i < models.length; i++) {
     for (let coba = 0; coba < 2; coba++) {
+      if (Date.now() - mulai > BATAS) return { ok: true, jawab: 'HISAB AI sedang sibuk (server Google lambat). Coba lagi 1–2 menit lagi ya.' };
       const res = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + key,
-        { method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: payload });
+        { method: 'post', contentType: 'application/json', muteHttpExceptions: true, payload: buatPayload(models[i]) });
       const kode = res.getResponseCode();
       let j = {}; try { j = JSON.parse(res.getContentText()); } catch (e) { }
       if (kode === 200 && !j.error) {
@@ -212,6 +219,13 @@ function tanyaAI_(q, konteks) {
     }
   }
   return { ok: true, jawab: 'HISAB AI sedang sibuk (server Google penuh). Coba lagi 1–2 menit lagi ya. Pertanyaan soal saldo, pengeluaran, dan piutang tetap bisa dijawab langsung.' };
+}
+
+/** Uji HISAB AI langsung dari editor: pilih fungsi ini lalu klik Jalankan, lihat Log eksekusi. */
+function tesHisab() {
+  const t = Date.now();
+  const r = tanyaAI_('Apa itu ilmu akuntansi? Jawab 2 kalimat.', '');
+  Logger.log('Waktu: ' + ((Date.now() - t) / 1000) + ' detik | model: ' + (r.model || '-') + '\n' + r.jawab);
 }
 
 /** Opsional: buat sheet "LAPORAN" yang mudah dibaca pengurus langsung di Google Sheet. Jalankan manual / pasang trigger harian. */
