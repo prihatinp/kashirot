@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.2';
+const VERSI = '1.3.3';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -913,8 +913,7 @@ VIEWS.evaluasi = el => {
       <div><b style="font-size:16px">${predikat}</b><br><small style="color:var(--abu)">Skor kesehatan keuangan ${blnNama(bk)}</small><br><small style="font-style:italic;color:var(--hijau)">"Hisablah diri kalian sebelum kalian dihisab" — Umar bin Khattab r.a.</small></div></div>
       <div style="margin-top:10px">${N.cek.map(c => `<div class="cek"><span class="s">${c.nilai >= 1 ? '✅' : c.nilai > 0 ? '🟡' : '❌'}</span><div><b>${c.judul}</b> <small style="display:inline">(${Math.round(c.bobot * c.nilai)}/${c.bobot})</small><small>${esc(c.ket)}</small></div></div>`).join('')}</div></div>
     ${daftarTemuan().length ? `<div class="kartu"><h3>🔎 Temuan bedah Excel lama <span class="kanan">${daftarTemuan().filter(t => t.status !== 'selesai').length} terbuka</span></h3>
-      ${daftarTemuan().map(t => `<div class="cek"><span class="s">${t.status === 'selesai' ? '✅' : t.prioritas === 'tinggi' ? '🔴' : '🟡'}</span><div style="flex:1"><b>${esc(t.judul)}</b><small>${esc(t.isi)}</small><small style="color:var(--hijau)"><b>Saran:</b> ${esc(t.saran)}</small>${bisaEdit() ? `<button class="btn kecil ${t.status === 'selesai' ? 'garis' : 'utama'}" style="margin-top:6px" data-tm="${t.id}">${t.status === 'selesai' ? '↩️ Buka lagi' : '✔️ Tandai selesai'}</button>` : ''}${t.status === 'selesai' && t.tglStatus ? `<small>Selesai ${tglIndo(t.tglStatus)}</small>` : ''}</div></div>`).join('')}</div>` : ''}
-    <div class="kartu"><h3>💡 Temuan & saran</h3>${insight.length ? insight.map(i => `<div class="cek"><div>${esc(i)}</div></div>`).join('') : '<small>Belum ada temuan khusus. Masya Allah.</small>'}</div>
+      ${daftarTemuan().map(t => `<div class="cek"><span class="s">${t.status === 'selesai' ? '✅' : t.prioritas === 'tinggi' ? '🔴' : '🟡'}</span><div style="flex:1"><b>${esc(t.judul)}</b><small>${esc(t.isi)}</small>${bisaEdit() ? `<button class="btn kecil ${t.status === 'selesai' ? 'garis' : 'utama'}" style="margin-top:6px" data-tm="${t.id}">${t.status === 'selesai' ? '↩️ Buka lagi' : '✔️ Tandai selesai'}</button>` : ''}${t.status === 'selesai' && t.tglStatus ? `<small>Selesai ${tglIndo(t.tglStatus)}</small>` : ''}</div></div>`).join('')}</div>` : ''}
     <div class="kartu"><h3>📊 Masuk vs Keluar 12 bulan</h3><canvas class="grafik" id="g1"></canvas></div>
     <div class="kartu"><h3>🍩 Komposisi pengeluaran ${blnNama(bk)}</h3>${Object.keys(kNow).length ? '<canvas class="grafik" id="g2"></canvas>' : '<small>Tidak ada pengeluaran</small>'}</div>
     <div class="kartu"><h3>🔝 5 pengeluaran terbesar</h3>${top.map(itemTx).join('') || '<small>-</small>'}</div>
@@ -928,8 +927,7 @@ VIEWS.evaluasi = el => {
   $('#ePdf', el).onclick = () => cetak(`${kop()}<h2>EVALUASI KEUANGAN</h2><div class="ket-lap">Bendahara Umum · ${blnNama(bk)}</div>
     <h3>Skor kesehatan: ${N.skor}/100 — ${predikat}</h3><table><tr><th>Aspek</th><th>Keterangan</th><th>Nilai</th></tr>${N.cek.map(c => `<tr><td>${c.judul}</td><td>${esc(c.ket)}</td><td class="n">${Math.round(c.bobot * c.nilai)}/${c.bobot}</td></tr>`).join('')}</table>
     <h3>Ringkasan</h3><table><tr><td>Pemasukan</td><td class="n">${fmt(r.masuk)}</td></tr><tr><td>Pengeluaran</td><td class="n">${fmt(r.keluar)}</td></tr><tr class="total"><td>Surplus / (defisit)</td><td class="n">${fmt(r.net)}</td></tr></table>
-    <h3>Temuan & saran</h3><ol>${insight.map(i => `<li>${esc(i)}</li>`).join('') || '<li>-</li>'}</ol>
-    ${daftarTemuan().length ? `<h3>Tindak lanjut temuan bedah Excel</h3><table><tr><th>Temuan</th><th>Saran</th><th>Status</th></tr>${daftarTemuan().map(t => `<tr><td><b>${esc(t.judul)}</b><br>${esc(t.isi)}</td><td>${esc(t.saran)}</td><td>${t.status === 'selesai' ? 'Selesai' : 'Terbuka'}</td></tr>`).join('')}</table>` : ''}
+    ${daftarTemuan().length ? `<h3>Tindak lanjut temuan bedah Excel</h3><table><tr><th>Temuan</th><th>Status</th></tr>${daftarTemuan().map(t => `<tr><td><b>${esc(t.judul)}</b><br>${esc(t.isi)}</td><td>${t.status === 'selesai' ? 'Selesai' : 'Terbuka'}</td></tr>`).join('')}</table>` : ''}
     <h3>5 pengeluaran terbesar</h3><table><tr><th>Tanggal</th><th>Keterangan</th><th>Jumlah</th><th>Bukti</th></tr>${top.map(t => `<tr><td>${tglIndo(t.tanggal)}</td><td>${esc(t.ket)}</td><td class="n">${fmt(t.nominal)}</td><td>${(t.foto || []).length ? 'Ada' : 'Tidak ada'}</td></tr>`).join('')}</table>
     <h3>Catatan evaluasi</h3><p style="white-space:pre-wrap">${esc($('#eCat', el).value || '-')}</p>${ttd()}`);
   // grafik
@@ -985,7 +983,7 @@ async function jawabHisab(qAsli) {
   const j = await jawabHisabInti(qAsli);
   if (/^📌 Temuan|^Siap\. Form/.test(j)) return j;
   const tk = temuanTerkait(qAsli.toLowerCase()).slice(0, 2);
-  return tk.length ? j + '\n\n📌 Catatan temuan:\n' + tk.map(t => `• ${t.judul}: ${t.saran}`).join('\n') : j;
+  return tk.length ? j + '\n\n📌 Catatan temuan:\n' + tk.map(t => `• ${t.judul}`).join('\n') : j;
 }
 async function jawabHisabInti(qAsli) {
   const q = qAsli.toLowerCase();
@@ -1006,7 +1004,7 @@ async function jawabHisabInti(qAsli) {
     const spesifik = temuanTerkait(q).filter(t => !/temuan|audit/.test(q) || true);
     const arr = /kenapa|mengapa/.test(q) && spesifik.length ? spesifik : daftarTemuan().filter(t => t.status !== 'selesai');
     if (!arr.length) return '📌 Temuan: semua sudah ditindaklanjuti. Alhamdulillah.';
-    return `📌 Temuan dari bedah Excel lama (${arr.length}):\n\n` + arr.map((t, i) => `${i + 1}. ${t.judul}\n${t.isi}\n➜ ${t.saran}`).join('\n\n');
+    return `📌 Temuan dari bedah Excel lama (${arr.length}):\n\n` + arr.map((t, i) => `${i + 1}. ${t.judul}\n${t.isi}`).join('\n\n');
   }
   const [dari, sampai, label] = periodeDariTeks(q);
   if (/saldo|uang (kita|yayasan)|sisa uang|kas (sekarang|berapa)/.test(q) && !/piutang|hutang/.test(q)) {
