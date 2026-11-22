@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16784a"/><stop offset="1" stop-color="#0b3f27"/></linearGradient>
+    <linearGradient id="e" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3d36b"/><stop offset="1" stop-color="#c9a227"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <g transform="translate(256 228) scale(0.86)">
+    <rect x="-150" y="-150" width="300" height="300" rx="18" fill="none" stroke="url(#e)" stroke-width="14"/>
+    <rect x="-150" y="-150" width="300" height="300" rx="18" fill="none" stroke="url(#e)" stroke-width="14" transform="rotate(45)"/>
+    <circle r="118" fill="#0d4a2e"/>
+    <!-- buku terbuka -->
+    <path d="M-86 -18 C-50 -40 -18 -36 0 -18 C18 -36 50 -40 86 -18 L86 66 C50 46 18 48 0 66 C-18 48 -50 46 -86 66 Z" fill="#fff"/>
+    <path d="M0 -18 L0 66" stroke="#0d4a2e" stroke-width="6"/>
+    <path d="M-70 4 C-46 -8 -24 -6 -12 4 M-70 24 C-46 12 -24 14 -12 24 M70 4 C46 -8 24 -6 12 4 M70 24 C46 12 24 14 12 24" stroke="#16784a" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- koin & bulan sabit -->
+    <circle cy="-64" r="30" fill="url(#e)"/>
+    <path d="M10 -84 A24 24 0 1 0 10 -44 A19 19 0 1 1 10 -84 Z" fill="#0d4a2e" transform="translate(-8 0)"/>
+  </g>
+  <text x="256" y="478" text-anchor="middle" font-family="Poppins,Arial,sans-serif" font-weight="700" font-size="50" letter-spacing="6" fill="#f3d36b">KASHIROT</text>
+</svg>

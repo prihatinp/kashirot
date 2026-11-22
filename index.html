@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KASHIROT — Kas Amanah Ash-Shirot</title>
+<meta name="description" content="Aplikasi Bendahara Umum Yayasan Ash-Shirot Al-Mustaqiem, Cikarang Selatan">
+<meta name="theme-color" content="#0f5132">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KASHIROT">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="topbar" id="topbar">
+  <button class="ikon-btn back-btn hidden" id="btnKembali" aria-label="Kembali">←</button>
+  <div class="logo"><img src="icons/logo.svg" alt=""></div>
+  <div class="judul"><b id="judulHal">KASHIROT</b><small id="subJudul">Kas Amanah Ash-Shirot</small></div>
+  <span class="mode-lihat hidden" id="tagLihat">Mode Lihat</span>
+  <button class="ikon-btn" id="btnSync" aria-label="Sinkron" title="Sinkron">⟳</button>
+</header>
+
+<main id="hal"></main>
+
+<button class="fab-hisab" id="fabHisab"><span>💬</span>Tanya HISAB</button>
+
+<nav class="nav" id="nav">
+  <button data-go="beranda" class="aktif"><span class="i">🏠</span>Beranda</button>
+  <button data-go="transaksi"><span class="i">📒</span>Transaksi</button>
+  <button class="tambah" id="navTambah" aria-label="Tambah transaksi">＋</button>
+  <button data-go="evaluasi"><span class="i">📊</span>Evaluasi</button>
+  <button data-go="menu"><span class="i">☰</span>Menu</button>
+</nav>
+
+<div id="cetak"></div>
+<div id="lapisan"></div>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="lib/chart.umd.min.js"></script>
+<script src="js/data-awal.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
