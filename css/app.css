@@ -124,6 +124,11 @@ textarea.inp{min-height:70px;resize:vertical}
 .baris{display:flex;gap:8px;align-items:center}
 .baris>*{flex:1}
 
+.rahasia{position:relative}
+.rahasia .inp{padding-right:52px}
+.rahasia .mata{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;color:var(--abu);cursor:pointer;display:grid;place-items:center;border-radius:10px}
+.rahasia .mata:hover{color:var(--hijau2);background:var(--hijau3)}
+
 /* ===== menu list ===== */
 .menu-list{background:#fff;border-radius:var(--r);box-shadow:var(--bayang);overflow:hidden;margin-bottom:12px}
 .menu-list button{width:100%;display:flex;align-items:center;gap:12px;padding:13px 14px;background:none;border:0;border-bottom:1px solid #f0f2ee;text-align:left;cursor:pointer;font-size:14.5px}

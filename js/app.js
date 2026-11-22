@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.7';
+const VERSI = '1.3.8';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -223,10 +223,19 @@ function tanya(judul, isi, okTeks = 'Ya', bahaya = false) {
 }
 function mintaTeks(judul, label, nilai = '', tipe = 'text') {
   return new Promise(res => {
-    const el = bukaLembar(`<h2>${esc(judul)}</h2><label class="l">${esc(label)}</label><input class="inp" id="mtInp" type="${tipe}" value="${esc(nilai)}"><div class="baris-btn"><button class="btn garis" data-x="0">Batal</button><button class="btn utama" data-x="1">OK</button></div>`);
-    setTimeout(() => $('#mtInp', el).focus(), 100);
+    const el = bukaLembar(`<h2>${esc(judul)}</h2><label class="l">${esc(label)}</label>${tipe === 'password' ? kolomRahasia('mtInp', nilai) : `<input class="inp" id="mtInp" type="${tipe}" value="${esc(nilai)}">`}<div class="baris-btn"><button class="btn garis" data-x="0">Batal</button><button class="btn utama" data-x="1">OK</button></div>`);
+    ikatMata(el); setTimeout(() => $('#mtInp', el).focus(), 100);
+    $('#mtInp', el).addEventListener('keydown', e => { if (e.key === 'Enter') $('[data-x="1"]', el).click(); });
     $$('[data-x]', el).forEach(b => b.onclick = () => { const v = $('#mtInp', el).value; tutupLembar(); res(b.dataset.x === '1' ? v : null); });
   });
+}
+function kolomRahasia(id, nilai = '', ph = '') {
+  return `<div class="rahasia"><input class="inp" id="${id}" type="password" value="${esc(nilai)}" placeholder="${esc(ph)}" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="mata" data-mata="${id}" aria-label="Tampilkan / sembunyikan">${IKON_MATA}</button></div>`;
+}
+const IKON_MATA = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const IKON_MATA_TUTUP = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.9 17.9A10.4 10.4 0 0 1 12 19c-6.4 0-10-7-10-7a18.5 18.5 0 0 1 4.2-5.1M9.9 5.2A9.6 9.6 0 0 1 12 5c6.4 0 10 7 10 7a18.6 18.6 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2"/><path d="M2 2l20 20"/></svg>';
+function ikatMata(el) {
+  $$('[data-mata]', el).forEach(b => b.onclick = () => { const i = $('#' + b.dataset.mata, el); const buka = i.type === 'password'; i.type = buka ? 'text' : 'password'; b.innerHTML = buka ? IKON_MATA_TUTUP : IKON_MATA; i.focus(); });
 }
 function lihatFoto(src) { const el = bukaLembar(`<h2>Bukti <button class="tutup">✕</button></h2><img src="${src}" style="width:100%;border-radius:12px">`); }
 
@@ -1461,7 +1470,7 @@ VIEWS.sinkron = el => {
   el.innerHTML = `<div class="kartu"><h3>☁️ Google Sheet yayasan</h3>
       <small style="color:var(--abu)">Isi dengan alamat Web App dari Google Apps Script (lihat README). Data otomatis tercadang ke Google Sheet & foto ke Google Drive, dan bisa dibuka di HP lain.</small>
       <label class="l">Alamat Web App</label><input class="inp" id="sUrl" value="${esc(m.syncUrl || m.syncUrlBawaan || '')}" placeholder="https://script.google.com/macros/s/.../exec">
-      <label class="l">Token akses</label><input class="inp" id="sTok" value="${esc(m.syncToken || '')}" placeholder="dari Script Properties: TOKEN atau TOKEN_LIHAT">
+      <label class="l">Token akses</label>${kolomRahasia('sTok', m.syncToken || '', 'token bendahara atau token lihat')}
       <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px"><input type="checkbox" id="sAuto" ${m.autoSync !== false ? 'checked' : ''}> Sinkron otomatis setiap ada perubahan</label>
       <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13.5px"><input type="checkbox" id="sAi" ${m.aiOn !== false ? 'checked' : ''}> Aktifkan HISAB AI (pertanyaan bebas, aktif bila admin sudah memasang GEMINI_API_KEY)</label>
       <div class="baris-btn"><button class="btn garis" id="sSimpan">Simpan & tes</button><button class="btn utama" id="sGo">⟳ Sinkron sekarang</button></div>
@@ -1469,6 +1478,7 @@ VIEWS.sinkron = el => {
     <div class="kartu"><h3>💾 Backup manual</h3><small style="color:var(--abu)">Simpan seluruh data (termasuk foto) ke 1 file. Simpan di Google Drive / kirim ke WA pribadi tiap akhir bulan.</small>
       <div class="baris-btn"><button class="btn emas" id="bExp">⬇️ Unduh backup</button><label class="btn garis" for="bImp">⬆️ Pulihkan</label></div><input type="file" id="bImp" accept=".json" class="hidden">
       <div class="baris-btn"><button class="btn bahaya" id="bHapus">🗑️ Hapus semua data di HP ini</button></div></div>`;
+  ikatMata(el);
   $('#sSimpan', el).onclick = async () => {
     m.syncUrl = $('#sUrl', el).value.trim(); m.syncToken = $('#sTok', el).value.trim(); m.autoSync = $('#sAuto', el).checked; m.aiOn = $('#sAi', el).checked; await simpanMeta();
     if (!m.syncUrl) return toast('Disimpan (sinkron nonaktif)');
