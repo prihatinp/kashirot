@@ -3,6 +3,7 @@
 #   CLASPRC_JSON  = isi file ~/.clasprc.json setelah `clasp login` dengan Gmail yayasan
 #   SCRIPT_ID     = Apps Script > Project Settings > Script ID
 #   DEPLOYMENT_ID = Deploy > Manage deployments > Deployment ID (yang URL-nya dipakai aplikasi)
+# Selama secrets belum diisi, workflow ini DILEWATI (hijau), Code.gs ditempel manual.
 name: Deploy backend (Apps Script)
 on:
   push:
@@ -12,16 +13,26 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      ADA_KUNCI: ${{ secrets.CLASPRC_JSON != '' && secrets.SCRIPT_ID != '' && secrets.DEPLOYMENT_ID != '' }}
     steps:
+      - name: Cek kunci clasp
+        if: env.ADA_KUNCI != 'true'
+        run: echo "::notice::Push otomatis backend belum dipasang - Code.gs ditempel manual. Dilewati."
       - uses: actions/checkout@v4
+        if: env.ADA_KUNCI == 'true'
       - uses: actions/setup-node@v4
+        if: env.ADA_KUNCI == 'true'
         with: { node-version: 20 }
       - run: npm i -g @google/clasp@2.4.2
+        if: env.ADA_KUNCI == 'true'
       - name: Tulis kredensial
+        if: env.ADA_KUNCI == 'true'
         run: |
           echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
           echo '{"scriptId":"${{ secrets.SCRIPT_ID }}","rootDir":"."}' > backend/.clasp.json
       - name: Push kode & perbarui deployment
+        if: env.ADA_KUNCI == 'true'
         working-directory: backend
         run: |
           clasp push -f
