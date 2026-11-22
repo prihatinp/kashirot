@@ -14,7 +14,7 @@
  *
  * Opsional HISAB AI: Project Settings > Script Properties > tambah
  *    GEMINI_API_KEY = (kunci dari aistudio.google.com)
- *    GEMINI_MODEL   = gemini-2.5-flash   (bisa diganti ke model terbaru)
+ *    GEMINI_MODEL   = (opsional) default gemini-flash-latest
  *
  * Setiap mengubah file ini: Deploy > Manage deployments > Edit > Version: New version.
  */
@@ -181,8 +181,8 @@ function ambilFoto_(driveId) {
 
 function tanyaAI_(q, konteks) {
   const key = props_().getProperty('GEMINI_API_KEY');
-  if (!key) return { ok: true, jawab: 'HISAB AI belum diaktifkan. Admin perlu mengisi GEMINI_API_KEY di Script Properties Apps Script.' };
-  const model = props_().getProperty('GEMINI_MODEL') || 'gemini-2.5-flash';
+  if (!key) return { ok: true, jawab: 'HISAB AI belum diaktifkan oleh admin (GEMINI_API_KEY belum dipasang). Pertanyaan seperti saldo, pengeluaran, piutang, dan temuan tetap bisa dijawab.' };
+  const model = props_().getProperty('GEMINI_MODEL') || 'gemini-flash-latest';
   const sistem = 'Kamu HISAB, asisten Bendahara Umum Yayasan Ash-Shirot Al-Mustaqiem (Cikarang Selatan). Jawab singkat, sopan, bahasa Indonesia santai-santun, ' +
     'berdasarkan DATA berikut saja. Jangan mengarang angka. Angka dalam Rupiah. Jika data tidak cukup, katakan terus terang.\n\nDATA:\n' + (konteks || '');
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + key;

@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.1';
+const VERSI = '1.3.2';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -954,7 +954,7 @@ function bukaHisab() {
     <div class="chat-kirim"><input class="inp" id="chInp" placeholder="Tanya, atau ketik: keluar 150rb konsumsi syuro"><button class="btn utama" id="chKirim">➤</button></div></div>`);
   const isi = $('#chIsi', el);
   const tampil = () => { isi.innerHTML = chatLog.map(m => `<div class="bub ${m.dari}">${m.html ? m.teks : esc(m.teks)}</div>`).join(''); isi.scrollTop = isi.scrollHeight; };
-  if (!chatLog.length) chatLog.push({ dari: 'bot', teks: `Assalamu'alaikum${S.konfig?.bendahara ? ', ' + S.konfig.bendahara : ''}. Saya HISAB, siap bantu cek saldo, rekap, piutang, atau mencatat transaksi cepat.\n\nContoh: "pengeluaran material bulan lalu", "piutang Basir", "masuk 2jt infak Fauzi".` });
+  if (!chatLog.length) chatLog.push({ dari: 'bot', teks: `Assalamu'alaikum${S.konfig?.bendahara ? ', ' + S.konfig.bendahara : ''}. Saya HISAB, siap bantu cek saldo, rekap, piutang, atau mencatat transaksi cepat.\n\nContoh: "pengeluaran material bulan lalu", "piutang Basir", "masuk 2jt infak Fauzi".${S.meta.syncUrl && S.meta.aiOn !== false ? '\n\nPertanyaan bebas juga boleh, nanti dijawab HISAB AI.' : ''}` });
   tampil();
   const kirim = async q => {
     q = (q || '').trim(); if (!q) return; chatLog.push({ dari: 'saya', teks: q }); $('#chInp', el).value = ''; tampil();
@@ -1051,10 +1051,10 @@ async function jawabHisabInti(qAsli) {
   const kata = (mCari ? mCari[1] : q).replace(/[?]/g, '').trim();
   const hasil = kata.length > 2 ? hidup(S.tx).filter(t => (t.ket + ' ' + (t.pihak || '')).toLowerCase().includes(kata)).slice(0, 8) : [];
   if (hasil.length) return `Ketemu ${hasil.length} transaksi "${kata}":\n${hasil.map(t => `• ${tglIndo(t.tanggal)} ${t.jenis === 'masuk' ? '+' : '-'}${rp(t.nominal)} ${t.ket}`).join('\n')}`;
-  if (S.meta.syncUrl && S.meta.aiOn && navigator.onLine) {
+  if (S.meta.syncUrl && S.meta.aiOn !== false && navigator.onLine) {
     try { const r = await api({ action: 'ask', q: qAsli, konteks: konteksAI() }); if (r.jawab) return r.jawab; } catch (e) { return 'Maaf, HISAB AI sedang tidak bisa dihubungi. ' + e.message; }
   }
-  return 'Afwan, HISAB belum paham pertanyaannya. Coba: "saldo pembangunan", "pengeluaran bulan lalu", "piutang Basir", "selisih terakhir", atau "keluar 50rb konsumsi".' + (S.meta.syncUrl ? '' : '\n\n(HISAB AI bisa diaktifkan di Menu › Sinkron untuk pertanyaan bebas.)');
+  return 'Afwan, HISAB belum paham pertanyaannya. Coba: "saldo pembangunan", "pengeluaran bulan lalu", "piutang Basir", "selisih terakhir", atau "keluar 50rb konsumsi".' + (S.meta.syncUrl ? '' : '\n\n(HISAB AI aktif setelah HP tersambung ke data yayasan.)');
 }
 
 /* =====================================================================
@@ -1460,7 +1460,7 @@ VIEWS.sinkron = el => {
       <label class="l">Alamat Web App</label><input class="inp" id="sUrl" value="${esc(m.syncUrl || m.syncUrlBawaan || '')}" placeholder="https://script.google.com/macros/s/.../exec">
       <label class="l">Token akses</label><input class="inp" id="sTok" value="${esc(m.syncToken || '')}" placeholder="dari Script Properties: TOKEN atau TOKEN_LIHAT">
       <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px"><input type="checkbox" id="sAuto" ${m.autoSync !== false ? 'checked' : ''}> Sinkron otomatis setiap ada perubahan</label>
-      <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13.5px"><input type="checkbox" id="sAi" ${m.aiOn ? 'checked' : ''}> Aktifkan HISAB AI (pertanyaan bebas, butuh GEMINI_API_KEY di Apps Script)</label>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13.5px"><input type="checkbox" id="sAi" ${m.aiOn !== false ? 'checked' : ''}> Aktifkan HISAB AI (pertanyaan bebas, aktif bila admin sudah memasang GEMINI_API_KEY)</label>
       <div class="baris-btn"><button class="btn garis" id="sSimpan">Simpan & tes</button><button class="btn utama" id="sGo">⟳ Sinkron sekarang</button></div>
       <small style="display:block;margin-top:8px;color:var(--abu)">Terakhir berhasil: ${m.lastSyncOk ? new Date(m.lastSyncOk).toLocaleString('id-ID') : '-'}${m.lastSyncErr ? ' · error terakhir: ' + esc(m.lastSyncErr) : ''}</small></div>
     <div class="kartu"><h3>💾 Backup manual</h3><small style="color:var(--abu)">Simpan seluruh data (termasuk foto) ke 1 file. Simpan di Google Drive / kirim ke WA pribadi tiap akhir bulan.</small>
