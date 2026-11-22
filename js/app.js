@@ -4,7 +4,7 @@
    PWA offline-first (IndexedDB) + sinkron opsional ke Google Sheet (Apps Script)
    ===================================================================== */
 'use strict';
-const VERSI = '1.3.3';
+const VERSI = '1.3.4';
 const LOGO = window.KASHIROT_LOGO || 'icons/logo.svg';
 const LOGO_YYS = window.KASHIROT_LOGO_YAYASAN || 'icons/logo-yayasan.png';
 
@@ -948,7 +948,7 @@ const chatLog = [];
 function bukaHisab() {
   const el = bukaLembar(`<h2>💬 HISAB <small style="font-weight:400;font-size:12px;color:var(--abu)">asisten bendahara</small><button class="tutup">✕</button></h2>
     <div class="chat"><div class="chat-isi" id="chIsi"></div>
-    <div class="chat-saran">${['Saldo semua', 'Pengeluaran bulan ini', 'Pemasukan bulan lalu', 'Total piutang', 'Selisih terakhir', 'Pengeluaran terbesar', 'Temuan audit', 'Skor evaluasi', 'Cara catat transaksi'].map(s => `<button class="chip">${s}</button>`).join('')}</div>
+    <div class="chat-saran">${['Saldo semua', 'Pengeluaran bulan ini', 'Pemasukan bulan lalu', 'Total piutang', 'Selisih terakhir', 'Pengeluaran terbesar', 'Skor evaluasi', 'Cara catat transaksi'].map(s => `<button class="chip">${s}</button>`).join('')}</div>
     <div class="chat-kirim"><input class="inp" id="chInp" placeholder="Tanya, atau ketik: keluar 150rb konsumsi syuro"><button class="btn utama" id="chKirim">➤</button></div></div>`);
   const isi = $('#chIsi', el);
   const tampil = () => { isi.innerHTML = chatLog.map(m => `<div class="bub ${m.dari}">${m.html ? m.teks : esc(m.teks)}</div>`).join(''); isi.scrollTop = isi.scrollHeight; };
@@ -1270,13 +1270,14 @@ async function muatSeedDialog() {
   if (konfigLama) { konfigLama.lockedUntil = ''; await simpan('konfig', konfigLama); }
   await catatAudit('Buka data tertanam', window.KASHIROT_SEED.info || '');
   jadwalSinkron();
-  toast(`✅ Data yayasan dimuat: ${D.tx.length} transaksi, ${(D.pinjaman || []).length} piutang/hutang, ${daftarTemuan().length} temuan`, 4000);
+  toast(`✅ Data yayasan dimuat: ${D.tx.length} transaksi, ${(D.pinjaman || []).length} piutang/hutang`, 4000);
   if (D.rekonPrefill) { S.rekonState = { ...D.rekonPrefill, koreksi: [] }; pergi('rekon', {}, true); } else pergi('beranda');
 }
 
 /* ---------- temuan (knowledge hasil bedah Excel) ---------- */
 const recTemuan = () => hidup(S.catatan).find(c => c.jenis === 'temuan');
-const daftarTemuan = () => recTemuan()?.temuan || [];
+const SEMBUNYIKAN_TEMUAN = true; // temuan & saran disembunyikan dari tampilan (data tetap tersimpan)
+const daftarTemuan = () => SEMBUNYIKAN_TEMUAN ? [] : (recTemuan()?.temuan || []);
 function temuanTerkait(q) {
   return daftarTemuan().filter(t => t.status !== 'selesai' && (t.kata || []).some(k => new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(q)));
 }
@@ -1556,7 +1557,7 @@ async function masukBendahara(pesan) {
   for (const k of ['buku', 'akun', 'kategori']) S[k].sort((a, b) => (a.urut || 0) - (b.urut || 0));
   if (!hidup(S.tx).length && adaSeed()) {
     // Sheet masih kosong: muat data Excel yayasan sekali, lalu otomatis terkirim ke Sheet
-    if (await tanya('Muat data yayasan?', 'Google Sheet masih kosong. Muat data dari Excel Laporan Keuangan Juni 2026 (149 transaksi, piutang, hutang, dan 10 temuan)? Cukup sekali; setelah itu semua HP mengambil dari Sheet.', 'Muat data')) { await muatSeedDialog(); return; }
+    if (await tanya('Muat data yayasan?', 'Google Sheet masih kosong. Muat data dari Excel Laporan Keuangan Juni 2026 (149 transaksi, piutang, dan hutang)? Cukup sekali; setelah itu semua HP mengambil dari Sheet.', 'Muat data')) { await muatSeedDialog(); return; }
   }
   if (!hidup(S.buku).length) { S.meta.lastPull = S.meta.lastPull || 1; await pastikanMaster(); }
   pergi('beranda'); toast(S.meta.pinHash ? '✅ Masuk sebagai bendahara' : '✅ Masuk sebagai bendahara. Jangan lupa buat PIN di Menu › Keamanan', 4500);
